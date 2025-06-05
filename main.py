@@ -15,10 +15,6 @@ def load_apikeys():
     with open(APIKEYS_FILE, "r") as f:
         return json.load(f)
 
-def save_apikeys(data):
-    with open(APIKEYS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
 # Get rate limit info for a key
 def get_groq_ratelimit_headers(api_key):
     headers = {
