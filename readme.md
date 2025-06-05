@@ -48,15 +48,17 @@
    ```sh
    bash test.sh
    ```
-   This will prompt you for a model and prompt, send a test request, and show the response. The Authorization header for test requests is set from the custom_local_api_key in apikeys.json.
+   This will prompt you for a model and prompt, send a test request, and show the response. The Authorization header for test requests is always set from the custom_local_api_key in apikeys.json. If apikeys.json is missing, the script will exit with an error.
 
-7. To update all files except your API keys:
+7. The API key is never hardcoded in any script. All scripts (main.py, test.sh, test_proxy.py) always load the API key from apikeys.json. If apikeys.json is missing, the scripts will exit with an error and prompt you to run install.sh.
+
+8. To update all files except your API keys:
    ```sh
    bash update.sh
    ```
    This will update all files except apikeys.json and version.txt from the remote repository (git required), add new files, and delete local files not present in the repo.
 
-8. To uninstall and clean up everything:
+9. To uninstall and clean up everything:
    ```sh
    sudo bash uninstall.sh
    ```
