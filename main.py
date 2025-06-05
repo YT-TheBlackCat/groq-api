@@ -2,6 +2,10 @@ import os
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from groq import Groq
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set GROQ_API_KEY environment variable here for testing/demo purposes
 os.environ["GROQ_API_KEY"] = "api_key"  # Replace with your actual key

@@ -3,3 +3,4 @@ httpx
 uvicorn
 groq
 requests
+python-dotenv
