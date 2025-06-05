@@ -1,19 +1,26 @@
 #!/bin/bash
 set -e
 
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 # Interactive install script for groq-api
 
-echo "[groq-api] Starting installation..."
+echo -e "${BLUE}[groq-api] Starting installation...${NC}"
 
 # Check for global apikeys.json in /home/$USER/apikeys.json
-GLOBAL_APIKEYS="/home/pi/apikeys.json"
+GLOBAL_APIKEYS="/home/$USER/apikeys.json"
 if [ -f "$GLOBAL_APIKEYS" ]; then
-    echo "[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it."
+    echo -e "${GREEN}[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it.${NC}"
     cp "$GLOBAL_APIKEYS" apikeys.json
 else
     # Ask for multiple API keys
     APIKEYS=()
-    echo "Enter your Groq API keys (one per line). Leave empty and press Enter to finish:"
+    echo -e "${YELLOW}Enter your Groq API keys (one per line). Leave empty and press Enter to finish:${NC}"
     while true; do
         read -p "API Key: " key
         if [[ -z "$key" ]]; then
@@ -23,7 +30,7 @@ else
     done
 
     if [[ ${#APIKEYS[@]} -eq 0 ]]; then
-        echo "No API keys entered. Exiting."
+        echo -e "${RED}No API keys entered. Exiting.${NC}"
         exit 1
     fi
 
@@ -35,7 +42,7 @@ $(for i in "${!APIKEYS[@]}"; do
 done)
 ]
 EOF
-    echo "[groq-api] apikeys.json created."
+    echo -e "${GREEN}[groq-api] apikeys.json created.${NC}"
 fi
 
 # Ask if service should be installed
@@ -43,27 +50,28 @@ read -p "Do you want to install groq-api as a systemd service? (y/n): " INSTALL_
 
 # Create venv if not exists
 if [ ! -d "venv" ]; then
-    echo "[groq-api] Creating virtual environment..."
+    echo -e "${BLUE}[groq-api] Creating virtual environment...${NC}"
     python3 -m venv venv
 fi
 
 # Activate venv
 source venv/bin/activate
 
-# Upgrade pip and install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+# Upgrade pip and install dependencies (suppress output, show spinner)
+echo -en "${BLUE}[groq-api] Installing dependencies...${NC} "
+pip install --upgrade pip > /dev/null 2>&1
+pip install -r requirements.txt > /dev/null 2>&1 && echo -e "${GREEN}done${NC}"
 
 # Debug test run
-echo "[groq-api] Running debug test (starting server in background)..."
+echo -e "${BLUE}[groq-api] Running debug test (starting server in background)...${NC}"
 nohup venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --reload > debug.log 2>&1 &
 SERVER_PID=$!
 sleep 5
-python3 test_proxy.py || echo "[groq-api] Test failed. Check debug.log for details."
+python3 test_proxy.py || echo -e "${RED}[groq-api] Test failed. Check debug.log for details.${NC}"
 kill $SERVER_PID || true
 
 # Install service if requested
-echo "[groq-api] Installation complete."
+echo -e "${GREEN}[groq-api] Installation complete.${NC}"
 if [[ "$INSTALL_SERVICE" =~ ^[Yy]$ ]]; then
     bash install-service.sh
 fi

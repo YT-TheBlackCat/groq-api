@@ -62,7 +62,7 @@ async def proxy_chat_completions(request: Request):
     elif model == "smart":
         model = "llama3-70b-8192"
     elif model == "smart-long":
-        model = "llama-3.3-70b-vertasile"
+        model = "llama-3.3-70b-versatile"
     elif model == "reasoning":
         model = "deepseek-r1-distill-llama-70b"
     elif model == "reasoning2":
