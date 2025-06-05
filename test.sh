@@ -12,6 +12,14 @@ if [ ! -f systemprompt.txt ]; then
     echo -e "${YELLOW}[groq-api] Created systemprompt.txt with default system prompt.${NC}"
 fi
 
+# Read custom_local_api_key from apikeys.json
+if [ -f apikeys.json ]; then
+    API_KEY=$(python3 -c "import json; print(json.load(open('apikeys.json'))['custom_local_api_key'])")
+else
+    echo -e "${YELLOW}[groq-api] apikeys.json not found. Using default API key.${NC}"
+    API_KEY="lassetestapi"
+fi
+
 MODEL=""
 while [[ -z "$MODEL" ]]; do
     read -p "Enter the model to use for the test (e.g. test, auto, smart, etc.): " MODEL
@@ -37,7 +45,7 @@ EOF
 
 echo -e "${YELLOW}[groq-api] Sending test request...${NC}"
 RESPONSE=$(curl -s -X POST http://localhost:8000/v1/chat/completions \
-  -H "Authorization: Bearer lassetestapi" \
+  -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d @test_input.json)
 

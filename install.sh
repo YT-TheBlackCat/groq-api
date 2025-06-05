@@ -36,7 +36,14 @@ else
     fi
 
     # Ask for custom local API key for test.sh
-    read -p "Enter a custom local API key for test.sh (used as Authorization header): " CUSTOM_API_KEY
+    while true; do
+        read -p "Enter a custom local API key for test.sh (used as Authorization header, cannot be empty): " CUSTOM_API_KEY
+        if [[ -n "$CUSTOM_API_KEY" ]]; then
+            break
+        else
+            echo -e "${RED}Custom local API key cannot be empty. Please enter a value.${NC}"
+        fi
+    done
 
     # Create apikeys.json with custom local API key
     cat > apikeys.json <<EOF
