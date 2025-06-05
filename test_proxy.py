@@ -1,19 +1,29 @@
 import requests
 
+# Read system prompt from file
+with open("systemprompt.txt", "r", encoding="utf-8") as f:
+    SYSTEMPROMPT = f.read().strip()
+
 def test_proxy_api():
     url = "http://localhost:8000/v1/chat/completions"
     headers = {
         "Authorization": "Bearer lassetestapi",
         "Content-Type": "application/json"
     }
+    user_prompt = input("Enter your prompt/question: ")
+    model = input("Enter the model to use for the test (e.g. test, auto, smart, etc.): ")
     data = {
         "messages": [
             {
+                "role": "system",
+                "content": SYSTEMPROMPT
+            },
+            {
                 "role": "user",
-                "content": "Wieso ist der Himmel blau?"
+                "content": user_prompt
             }
         ],
-        "model": "test"
+        "model": model
     }
     response = requests.post(url, json=data, headers=headers)
     print("Status Code:", response.status_code)
