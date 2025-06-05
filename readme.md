@@ -12,8 +12,8 @@
      {
        "custom_local_api_key": "your-local-api-key",
        "groq_keys": [
-         {"key": "sk-..."},
-         {"key": "sk-..."}
+         {"key": "grk_..."},
+         {"key": "grk_..."}
        ]
      }
      ```
