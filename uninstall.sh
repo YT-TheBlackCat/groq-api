@@ -38,4 +38,13 @@ if [ -d "__pycache__" ]; then
     rm -rf __pycache__
 fi
 
+# Remove the entire groq-api project folder if running from within it
+PARENT_DIR=$(dirname "$WORKDIR")
+FOLDER_NAME=$(basename "$WORKDIR")
+if [ "$FOLDER_NAME" = "groq-api" ]; then
+    cd "$PARENT_DIR"
+    echo "[groq-api] Removing project folder $FOLDER_NAME..."
+    rm -rf "$FOLDER_NAME"
+fi
+
 echo "[groq-api] Uninstallation complete."
