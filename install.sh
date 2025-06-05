@@ -29,11 +29,6 @@ cat > .env <<EOF
 GROQ_API_KEY=$GROQ_API_KEY
 EOF
 
-# Patch main.py to use .env if not already present
-if ! grep -q 'from dotenv import load_dotenv' main.py; then
-    sed -i "1ifrom dotenv import load_dotenv\nload_dotenv()" main.py
-fi
-
 # Debug test run
 echo "[groq-api] Running debug test (starting server in background)..."
 nohup venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --reload > debug.log 2>&1 &

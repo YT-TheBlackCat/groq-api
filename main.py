@@ -7,8 +7,16 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Set GROQ_API_KEY environment variable here for testing/demo purposes
-os.environ["GROQ_API_KEY"] = "api_key"  # Replace with your actual key
+# Prompt for GROQ_API_KEY only if running interactively (not as server)
+def ensure_groq_api_key():
+    if not os.environ.get("GROQ_API_KEY") and os.isatty(0):
+        api_key = input("Enter your GROQ_API_KEY: ").strip()
+        with open(".env", "a") as f:
+            f.write(f"\nGROQ_API_KEY={api_key}\n")
+        os.environ["GROQ_API_KEY"] = api_key
+        print("GROQ_API_KEY saved to .env and set for this session.")
+
+ensure_groq_api_key()
 
 app = FastAPI()
 
