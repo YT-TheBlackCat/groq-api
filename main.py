@@ -82,6 +82,9 @@ async def proxy_chat_completions(request: Request):
     best_key = select_best_key(apikeys)
     groq_key = best_key["key"]
 
+    # Print remaining tokens for the selected key
+    print(f"[groq-api] Using key: {groq_key[:8]}... Remaining tokens: {best_key['remaining_tokens']}, Remaining requests: {best_key['remaining_requests']}")
+
     client = Groq(api_key=groq_key)
     try:
         chat_completion = client.chat.completions.create(
