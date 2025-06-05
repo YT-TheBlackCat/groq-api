@@ -16,8 +16,8 @@ fi
 if [ -f apikeys.json ]; then
     API_KEY=$(python3 -c "import json; print(json.load(open('apikeys.json'))['custom_local_api_key'])")
 else
-    echo -e "${YELLOW}[groq-api] apikeys.json not found. Using default API key.${NC}"
-    API_KEY="lassetestapi"
+    echo -e "${YELLOW}[groq-api] apikeys.json not found. Please run install.sh to create it.${NC}"
+    exit 1
 fi
 
 # Ask for API server IP (default: localhost:8000)

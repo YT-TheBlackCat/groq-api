@@ -15,6 +15,12 @@ def load_apikeys():
     with open(APIKEYS_FILE, "r") as f:
         return json.load(f)
 
+def get_local_api_key():
+    if not os.path.exists(APIKEYS_FILE):
+        raise RuntimeError(f"{APIKEYS_FILE} not found. Please run install.sh to create it.")
+    with open(APIKEYS_FILE, "r") as f:
+        return json.load(f).get("custom_local_api_key", "")
+
 # Get rate limit info for a key
 def get_groq_ratelimit_headers(api_key):
     headers = {
@@ -41,7 +47,7 @@ def select_best_key(apikeys):
     return best
 
 app = FastAPI()
-API_KEY = "lassetestapi"
+API_KEY = get_local_api_key()
 
 @app.post("/chat/completions")
 async def proxy_chat_completions(request: Request):
