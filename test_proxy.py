@@ -1,4 +1,3 @@
-import os
 import requests
 
 def test_proxy_api():
@@ -11,10 +10,10 @@ def test_proxy_api():
         "messages": [
             {
                 "role": "user",
-                "content": "Explain the importance of fast language models"
+                "content": "Wieso ist der Himmel blau?"
             }
         ],
-        "model": "auto"
+        "model": "test"
     }
     response = requests.post(url, json=data, headers=headers)
     print("Status Code:", response.status_code)
@@ -22,4 +21,3 @@ def test_proxy_api():
 
 if __name__ == "__main__":
     test_proxy_api()
-
