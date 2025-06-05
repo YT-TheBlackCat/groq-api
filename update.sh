@@ -24,8 +24,11 @@ else
     exit 1
 fi
 
-# Compare and update files
-for file in *; do
+# Get list of tracked files in remote branch
+REMOTE_FILES=$(git ls-tree -r --name-only origin/$BRANCH)
+
+# Compare and update files, and add new files
+for file in $REMOTE_FILES; do
     skip=0
     for ex in $EXCLUDE; do
         if [[ "$file" == "$ex" ]]; then
@@ -33,13 +36,18 @@ for file in *; do
             break
         fi
     done
-    if [[ $skip -eq 1 ]] || [[ ! -f "$file" ]]; then
+    if [[ $skip -eq 1 ]]; then
         continue
     fi
     # Download remote file to temp
     TMPFILE=$(mktemp)
     git show origin/$BRANCH:$file > "$TMPFILE" 2>/dev/null || continue
-    if ! cmp -s "$file" "$TMPFILE"; then
+    if [[ ! -f "$file" ]]; then
+        echo -e "${YELLOW}[groq-api] Adding new file $file...${NC}"
+        cp "$TMPFILE" "$file"
+        UPDATED=1
+        CHANGED_FILES+=("$file (new)")
+    elif ! cmp -s "$file" "$TMPFILE"; then
         echo -e "${YELLOW}[groq-api] Updating $file...${NC}"
         git checkout origin/$BRANCH -- "$file"
         UPDATED=1
