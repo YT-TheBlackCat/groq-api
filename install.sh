@@ -5,8 +5,21 @@ set -e
 
 echo "[groq-api] Starting installation..."
 
-# Ask for API key
-read -p "Enter your GROQ_API_KEY: " GROQ_API_KEY
+# Ask for multiple API keys
+APIKEYS=()
+echo "Enter your Groq API keys (one per line). Leave empty and press Enter to finish:"
+while true; do
+    read -p "API Key: " key
+    if [[ -z "$key" ]]; then
+        break
+    fi
+    APIKEYS+=("$key")
+done
+
+if [[ ${#APIKEYS[@]} -eq 0 ]]; then
+    echo "No API keys entered. Exiting."
+    exit 1
+fi
 
 # Ask if service should be installed
 read -p "Do you want to install groq-api as a systemd service? (y/n): " INSTALL_SERVICE
@@ -24,10 +37,16 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Set API key in .env file
-cat > .env <<EOF
-GROQ_API_KEY=$GROQ_API_KEY
+# Create apikeys.json
+cat > apikeys.json <<EOF
+[
+$(for i in "${!APIKEYS[@]}"; do
+    printf '  {"key": "%s"}%s\n' "${APIKEYS[$i]}" $( [[ $i -lt $((${#APIKEYS[@]}-1)) ]] && echo "," )
+done)
+]
 EOF
+
+echo "[groq-api] apikeys.json created."
 
 # Debug test run
 echo "[groq-api] Running debug test (starting server in background)..."
@@ -42,4 +61,3 @@ echo "[groq-api] Installation complete."
 if [[ "$INSTALL_SERVICE" =~ ^[Yy]$ ]]; then
     bash install-service.sh
 fi
-

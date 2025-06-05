@@ -1,25 +1,50 @@
 import os
+import json
+import httpx
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from groq import Groq
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+APIKEYS_FILE = "apikeys.json"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Prompt for GROQ_API_KEY only if running interactively (not as server)
-def ensure_groq_api_key():
-    if not os.environ.get("GROQ_API_KEY") and os.isatty(0):
-        api_key = input("Enter your GROQ_API_KEY: ").strip()
-        with open(".env", "a") as f:
-            f.write(f"\nGROQ_API_KEY={api_key}\n")
-        os.environ["GROQ_API_KEY"] = api_key
-        print("GROQ_API_KEY saved to .env and set for this session.")
+# Helper to load API keys and usage
+def load_apikeys():
+    if not os.path.exists(APIKEYS_FILE):
+        raise RuntimeError(f"{APIKEYS_FILE} not found. Please run install.sh to create it.")
+    with open(APIKEYS_FILE, "r") as f:
+        return json.load(f)
 
-ensure_groq_api_key()
+def save_apikeys(data):
+    with open(APIKEYS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+# Get rate limit info for a key
+def get_groq_ratelimit_headers(api_key):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    # Use a lightweight request to get headers (OPTIONS is not supported, so use POST with minimal data)
+    data = {"model": "llama-3-8b", "messages": [{"role": "user", "content": "ping"}]}
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.post(GROQ_API_URL, headers=headers, json=data)
+            # Even if the request fails, headers are returned
+            return {
+                "remaining_tokens": int(resp.headers.get("x-ratelimit-remaining-tokens", 0)),
+                "remaining_requests": int(resp.headers.get("x-ratelimit-remaining-requests", 0)),
+                "status_code": resp.status_code
+            }
+    except Exception:
+        return {"remaining_tokens": 0, "remaining_requests": 0, "status_code": 0}
+
+# Select the key with the highest remaining tokens
+def select_best_key(apikeys):
+    best = max(apikeys, key=lambda k: k.get("remaining_tokens", 0))
+    return best
 
 app = FastAPI()
-
 API_KEY = "lassetestapi"
 
 @app.post("/v1/chat/completions")
@@ -44,15 +69,25 @@ async def proxy_chat_completions(request: Request):
         model = "qwen-qwq-32b"
     else:
         raise HTTPException(status_code=400, detail="Invalid model specified")
-    # Prepare Groq client with the API key
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    # Load API keys and update their rate limit info
+    apikeys = load_apikeys()
+    for k in apikeys:
+        info = get_groq_ratelimit_headers(k["key"])
+        k["remaining_tokens"] = info["remaining_tokens"]
+        k["remaining_requests"] = info["remaining_requests"]
+        k["last_status_code"] = info["status_code"]
+    save_apikeys(apikeys)
+    best_key = select_best_key(apikeys)
+    groq_key = best_key["key"]
+
+    client = Groq(api_key=groq_key)
     try:
         chat_completion = client.chat.completions.create(
             messages=body.get("messages", []),
             model=model,
         )
         print(chat_completion.choices[0].message.content)
-        # Return only the message content in OpenAI style
         return JSONResponse(status_code=200, content={
             "choices": [
                 {
