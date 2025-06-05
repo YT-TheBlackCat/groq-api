@@ -67,13 +67,12 @@ async def proxy_chat_completions(request: Request):
         raise HTTPException(status_code=400, detail="Invalid model specified")
 
     # Load API keys and update their rate limit info
-    apikeys = load_apikeys()
+    apikeys = load_apikeys()["groq_keys"]
     for k in apikeys:
         info = get_groq_ratelimit_headers(k["key"])
         k["remaining_tokens"] = info["remaining_tokens"]
         k["remaining_requests"] = info["remaining_requests"]
         k["last_status_code"] = info["status_code"]
-    save_apikeys(apikeys)
     best_key = select_best_key(apikeys)
     groq_key = best_key["key"]
 
