@@ -17,7 +17,6 @@ User=$USER
 WorkingDirectory=$WORKDIR
 ExecStart=$WORKDIR/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=always
-EnvironmentFile=$WORKDIR/.env
 
 [Install]
 WantedBy=multi-user.target
@@ -28,4 +27,3 @@ sudo systemctl enable $SERVICE_NAME
 sudo systemctl start $SERVICE_NAME
 
 echo "[groq-api] Service installed and started. Use 'sudo systemctl status $SERVICE_NAME' to check status."
-

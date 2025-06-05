@@ -54,7 +54,7 @@ nohup venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --reload > debug.lo
 SERVER_PID=$!
 sleep 5
 python3 test_proxy.py || echo "[groq-api] Test failed. Check debug.log for details."
-kill $SERVER_PID
+kill $SERVER_PID || true
 
 # Install service if requested
 echo "[groq-api] Installation complete."
