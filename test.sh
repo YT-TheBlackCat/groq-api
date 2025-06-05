@@ -50,7 +50,7 @@ cat <<EOF > test_input.json
 EOF
 
 echo -e "${YELLOW}[groq-api] Sending test request...${NC}"
-RESPONSE=$(curl -s -X POST http://$API_SERVER/v1/chat/completions \
+RESPONSE=$(curl -s -X POST http://$API_SERVER/chat/completions \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d @test_input.json)
