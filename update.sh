@@ -4,33 +4,62 @@ set -e
 # Color codes
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 SERVICE_NAME=groq-api
+EXCLUDE="apikeys.json version.txt"
 UPDATED=0
-EXCLUDE="apikeys.json"
+CHANGED_FILES=()
 
+# Get remote repo URL and branch
+REMOTE_URL=$(git config --get remote.origin.url)
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
+# Fetch latest from remote
+if git ls-remote --exit-code origin HEAD &>/dev/null; then
+    git fetch origin $BRANCH
+else
+    echo -e "${RED}[groq-api] No remote git repository found. Cannot update.${NC}"
+    exit 1
+fi
+
+# Compare and update files
 for file in *; do
-    if [[ "$file" == "$EXCLUDE" ]] || [[ ! -f "$file" ]]; then
+    skip=0
+    for ex in $EXCLUDE; do
+        if [[ "$file" == "$ex" ]]; then
+            skip=1
+            break
+        fi
+    done
+    if [[ $skip -eq 1 ]] || [[ ! -f "$file" ]]; then
         continue
     fi
-    if git ls-remote --exit-code origin HEAD &>/dev/null; then
-        if git ls-files --error-unmatch "$file" &>/dev/null; then
-            echo -e "${YELLOW}[groq-api] Updating $file...${NC}"
-            git fetch origin
-            git checkout origin/main -- "$file"
-            UPDATED=1
-        fi
+    # Download remote file to temp
+    TMPFILE=$(mktemp)
+    git show origin/$BRANCH:$file > "$TMPFILE" 2>/dev/null || continue
+    if ! cmp -s "$file" "$TMPFILE"; then
+        echo -e "${YELLOW}[groq-api] Updating $file...${NC}"
+        git checkout origin/$BRANCH -- "$file"
+        UPDATED=1
+        CHANGED_FILES+=("$file")
     fi
-    # If not using git, could add wget/curl logic here
-    # For now, only git-based update is supported
-    # echo "[groq-api] $file updated."
+    rm -f "$TMPFILE"
 done
 
+# Save current commit hash as version
+VERSION=$(git rev-parse origin/$BRANCH)
+echo "$VERSION" > version.txt
+
 if [[ $UPDATED -eq 1 ]]; then
-    echo -e "${GREEN}[groq-api] Update complete. Restarting service...${NC}"
+    echo -e "${GREEN}[groq-api] Update complete. The following files were updated:${NC}"
+    for f in "${CHANGED_FILES[@]}"; do
+        echo -e "  ${GREEN}$f${NC}"
+    done
+    echo -e "${GREEN}[groq-api] Service restarting...${NC}"
     sudo systemctl restart $SERVICE_NAME
     echo -e "${GREEN}[groq-api] Service restarted. Please check status with: sudo systemctl status $SERVICE_NAME${NC}"
 else
-    echo -e "${YELLOW}[groq-api] No files updated. Either already up to date or not a git repo.${NC}"
+    echo -e "${YELLOW}[groq-api] All files are already up to date. No changes made.${NC}"
 fi
