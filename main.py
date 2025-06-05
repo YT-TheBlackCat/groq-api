@@ -47,7 +47,7 @@ def select_best_key(apikeys):
 app = FastAPI()
 API_KEY = "lassetestapi"
 
-@app.post("/")
+@app.post("/chat/completions")
 async def proxy_chat_completions(request: Request):
     auth = request.headers.get("Authorization", "")
     if auth != f"Bearer {API_KEY}":

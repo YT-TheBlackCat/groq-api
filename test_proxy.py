@@ -11,7 +11,7 @@ with open("systemprompt.txt", "r", encoding="utf-8") as f:
     SYSTEMPROMPT = f.read().strip()
 
 def test_proxy_api():
-    url = "http://localhost:8000/"
+    url = "http://localhost:8000/chat/completions"
     headers = {
         "Authorization": f"Bearer {CUSTOM_API_KEY}",
         "Content-Type": "application/json"
