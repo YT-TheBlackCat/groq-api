@@ -49,18 +49,12 @@ cat <<EOF > test_input.json
 }
 EOF
 
-echo -e "${YELLOW}[groq-api] Sending test request to http://$API_SERVER/chat/completions with headers:"
-echo -e "  Authorization: Bearer $API_KEY"
-echo -e "  Content-Type: application/json"
-echo -e "${YELLOW}[groq-api] Request body:${NC}"
-cat test_input.json
-
-RESPONSE=$(curl -v -s -X POST http://$API_SERVER/chat/completions \
+RESPONSE=$(curl -s -X POST http://$API_SERVER/chat/completions \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d @test_input.json 2>&1)
+  -d @test_input.json)
 
 rm -f test_input.json
 
-echo -e "${GREEN}[groq-api] Curl log and response:${NC}"
+echo -e "${GREEN}[groq-api] Response:${NC}"
 echo "$RESPONSE"
