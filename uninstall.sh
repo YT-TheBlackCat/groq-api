@@ -1,4 +1,4 @@
-for t#!/bin/bash
+#!/bin/bash
 # uninstall.sh: Remove groq-api installation, venv, apikeys, and service
 set -e
 
@@ -39,4 +39,3 @@ if [ -d "__pycache__" ]; then
 fi
 
 echo "[groq-api] Uninstallation complete."
-
