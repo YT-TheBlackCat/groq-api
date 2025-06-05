@@ -5,20 +5,37 @@ set -e
 
 echo "[groq-api] Starting installation..."
 
-# Ask for multiple API keys
-APIKEYS=()
-echo "Enter your Groq API keys (one per line). Leave empty and press Enter to finish:"
-while true; do
-    read -p "API Key: " key
-    if [[ -z "$key" ]]; then
-        break
-    fi
-    APIKEYS+=("$key")
-done
+# Check for global apikeys.json in /home/$USER/apikeys.json
+GLOBAL_APIKEYS="/home/$USER/apikeys.json"
+if [ -f "$GLOBAL_APIKEYS" ]; then
+    echo "[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it."
+    cp "$GLOBAL_APIKEYS" apikeys.json
+else
+    # Ask for multiple API keys
+    APIKEYS=()
+    echo "Enter your Groq API keys (one per line). Leave empty and press Enter to finish:"
+    while true; do
+        read -p "API Key: " key
+        if [[ -z "$key" ]]; then
+            break
+        fi
+        APIKEYS+=("$key")
+    done
 
-if [[ ${#APIKEYS[@]} -eq 0 ]]; then
-    echo "No API keys entered. Exiting."
-    exit 1
+    if [[ ${#APIKEYS[@]} -eq 0 ]]; then
+        echo "No API keys entered. Exiting."
+        exit 1
+    fi
+
+    # Create apikeys.json
+    cat > apikeys.json <<EOF
+[
+$(for i in "${!APIKEYS[@]}"; do
+    printf '  {"key": "%s"}%s\n' "${APIKEYS[$i]}" $( [[ $i -lt $((${#APIKEYS[@]}-1)) ]] && echo "," )
+done)
+]
+EOF
+    echo "[groq-api] apikeys.json created."
 fi
 
 # Ask if service should be installed
@@ -36,17 +53,6 @@ source venv/bin/activate
 # Upgrade pip and install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
-
-# Create apikeys.json
-cat > apikeys.json <<EOF
-[
-$(for i in "${!APIKEYS[@]}"; do
-    printf '  {"key": "%s"}%s\n' "${APIKEYS[$i]}" $( [[ $i -lt $((${#APIKEYS[@]}-1)) ]] && echo "," )
-done)
-]
-EOF
-
-echo "[groq-api] apikeys.json created."
 
 # Debug test run
 echo "[groq-api] Running debug test (starting server in background)..."
