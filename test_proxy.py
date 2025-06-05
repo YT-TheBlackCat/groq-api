@@ -4,7 +4,7 @@ import requests
 # Load custom local API key from apikeys.json
 with open("apikeys.json", "r", encoding="utf-8") as f:
     apikeys_data = json.load(f)
-CUSTOM_API_KEY = apikeys_data.get("custom_local_api_key", "lassetestapi")
+CUSTOM_API_KEY = apikeys_data.get("custom_local_api_key")
 
 # Read system prompt from file
 with open("systemprompt.txt", "r", encoding="utf-8") as f:
