@@ -17,7 +17,10 @@ def test_proxy_api():
     }
     response = requests.post(url, json=data, headers=headers)
     print("Status Code:", response.status_code)
-    print("Response:", response.json())
+    try:
+        print("Response:", response.json())
+    except Exception:
+        print("Response (raw):", response.text)
 
 if __name__ == "__main__":
     test_proxy_api()
