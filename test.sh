@@ -20,6 +20,12 @@ else
     API_KEY="lassetestapi"
 fi
 
+# Ask for API server IP (default: localhost:8000)
+read -p "Enter the API server IP and port (default: localhost:8000): " API_SERVER
+if [ -z "$API_SERVER" ]; then
+    API_SERVER="localhost:8000"
+fi
+
 MODEL=""
 while [[ -z "$MODEL" ]]; do
     read -p "Enter the model to use for the test (e.g. test, auto, smart, etc.): " MODEL
@@ -44,7 +50,7 @@ cat <<EOF > test_input.json
 EOF
 
 echo -e "${YELLOW}[groq-api] Sending test request...${NC}"
-RESPONSE=$(curl -s -X POST http://localhost:8000/chat/completions \
+RESPONSE=$(curl -s -X POST http://$API_SERVER/v1/chat/completions \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d @test_input.json)
