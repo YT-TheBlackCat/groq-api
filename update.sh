@@ -71,3 +71,4 @@ if [[ $UPDATED -eq 1 ]]; then
 else
     echo -e "${YELLOW}[groq-api] All files are already up to date. No changes made.${NC}"
 fi
+
