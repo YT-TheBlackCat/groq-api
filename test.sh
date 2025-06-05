@@ -13,8 +13,16 @@ if [ ! -f systemprompt.txt ]; then
     echo -e "${YELLOW}[groq-api] Created systemprompt.txt with default system prompt.${NC}"
 fi
 
-read -p "Enter the model to use for the test (e.g. test, auto, smart, etc.): " MODEL
-read -p "Enter your prompt/question: " PROMPT
+# Get prompt from prompt.txt
+if [ ! -f prompt.txt ]; then
+    echo "What is the capital of France?" > prompt.txt
+    echo -e "${YELLOW}[groq-api] Created prompt.txt with a default prompt.${NC}"
+fi
+MODEL=""
+while [[ -z "$MODEL" ]]; do
+    read -p "Enter the model to use for the test (e.g. test, auto, smart, etc.): " MODEL
+done
+PROMPT=$(cat prompt.txt)
 SYSTEMPROMPT=$(cat systemprompt.txt)
 
 cat <<EOF > test_input.json
