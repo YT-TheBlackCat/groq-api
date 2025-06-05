@@ -6,7 +6,7 @@ set -e
 echo "[groq-api] Starting installation..."
 
 # Check for global apikeys.json in /home/$USER/apikeys.json
-GLOBAL_APIKEYS="/home/$USER/apikeys.json"
+GLOBAL_APIKEYS="/home/pi/apikeys.json"
 if [ -f "$GLOBAL_APIKEYS" ]; then
     echo "[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it."
     cp "$GLOBAL_APIKEYS" apikeys.json
