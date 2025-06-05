@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from groq import Groq
 
 # Set GROQ_API_KEY environment variable here for testing/demo purposes
-os.environ["GROQ_API_KEY"] = "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"  # Replace with your actual key
+os.environ["GROQ_API_KEY"] = "api_key"  # Replace with your actual key
 
 app = FastAPI()
 
