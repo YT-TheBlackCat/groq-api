@@ -35,8 +35,19 @@
    source venv/bin/activate
    python test_proxy.py
    ```
+   Or use the interactive test script:
+   ```sh
+   bash test.sh
+   ```
+   This will prompt you for a model and prompt, send a test request, and show the response.
 
-7. To uninstall and clean up everything:
+7. To update all files except your API keys:
+   ```sh
+   bash update.sh
+   ```
+   This will update all files except apikeys.json from the remote repository (git required).
+
+8. To uninstall and clean up everything:
    ```sh
    sudo bash uninstall.sh
    ```
