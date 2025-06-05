@@ -7,8 +7,17 @@
    ```
 
 2. Prepare your API keys:
-   - (Optional) Place a global apikeys.json in your home directory (`/home/$USER/apikeys.json`) to use the same keys for all installs.
-   - If not present, the installer will prompt you to enter your Groq API keys interactively.
+   - (Optional) Place a global apikeys.json in your home directory (`/home/$USER/apikeys.json`) to use the same keys for all installs. The structure should be:
+     ```json
+     {
+       "custom_local_api_key": "your-local-api-key",
+       "groq_keys": [
+         {"key": "sk-..."},
+         {"key": "sk-..."}
+       ]
+     }
+     ```
+   - If not present, the installer will prompt you to enter your Groq API keys and a custom local API key interactively.
 
 3. Run the interactive install script:
    ```sh
@@ -39,13 +48,13 @@
    ```sh
    bash test.sh
    ```
-   This will prompt you for a model and prompt, send a test request, and show the response.
+   This will prompt you for a model and prompt, send a test request, and show the response. The Authorization header for test requests is set from the custom_local_api_key in apikeys.json.
 
 7. To update all files except your API keys:
    ```sh
    bash update.sh
    ```
-   This will update all files except apikeys.json from the remote repository (git required).
+   This will update all files except apikeys.json and version.txt from the remote repository (git required), add new files, and delete local files not present in the repo.
 
 8. To uninstall and clean up everything:
    ```sh
