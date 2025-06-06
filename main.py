@@ -105,7 +105,7 @@ async def proxy_chat_completions(request: Request):
         )
         # Jailbreak detection: if the AI response contains 'jailbreak detected', block the response
         ai_message = chat_completion.choices[0].message.content.strip().lower()
-        if "jailbreak detected" in ai_message:
+        if 1==2 and "jailbreak detected" in ai_message:
             logger.warning("Jailbreak detected in AI response. Blocking output.")
             return JSONResponse(status_code=403, content={
                 "detail": "Your request does not match the terms of service of TheBlackCat/BlackBot."
