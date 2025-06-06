@@ -300,6 +300,20 @@ reset_usage_for_key_model() {
     echo -e "${GREEN}[groq-api] Usage counters reset for key $APIKEY and model $MODEL to $VALUE.${NC}"
 }
 
+list_tools() {
+    echo -e "${BLUE}Available tools:${NC}"
+    echo "  update-keys    Update API keys (interactive)"
+    echo "  test           Test the API proxy (interactive)"
+    echo "  usage          Show API key usage information"
+    echo "  backup         Backup DB and API keys to ~/groq-api-backup/"
+    echo "  add-model      Add a new model to the DB"
+    echo "  uninstall      Uninstall groq-api and clean up"
+    echo "  status         Show service and DB status"
+    echo "  reset-usage    Reset usage counters for a key/model to a value"
+    echo "  --help         Show this help message"
+    echo "  --version      Show version"
+}
+
 # --- Argument parsing ---
 if [[ "$1" == "--help" ]]; then usage; exit 0; fi
 if [[ "$1" == "--version" ]]; then echo "$VERSION"; exit 0; fi
@@ -311,6 +325,7 @@ if [[ "$1" == "backup" ]]; then backup_files; exit 0; fi
 if [[ "$1" == "add-model" ]]; then add_model; exit 0; fi
 if [[ "$1" == "uninstall" ]]; then uninstall_groq; exit 0; fi
 if [[ "$1" == "reset-usage" ]]; then reset_usage_for_key_model; exit 0; fi
+if [[ "$1" == "tools" ]]; then list_tools; exit 0; fi
 
 # Default: show menu
 show_menu
