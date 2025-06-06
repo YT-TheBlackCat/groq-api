@@ -12,8 +12,9 @@ show_menu() {
     echo -e "${BLUE}groq-api options:${NC}"
     echo "1) Update API keys (apikeys.json)"
     echo "2) Test the API proxy (interactive)"
-    echo "3) Uninstall groq-api and clean up"
-    echo "4) Exit"
+    echo "3) Show API key usage information"
+    echo "4) Uninstall groq-api and clean up"
+    echo "5) Exit"
 }
 
 update_apikeys() {
@@ -102,6 +103,32 @@ EOF
     echo "$RESPONSE"
 }
 
+show_usage() {
+    echo -e "${BLUE}[groq-api] API key usage information:${NC}"
+    if [ ! -f apikeys.json ]; then
+        echo -e "${RED}apikeys.json not found. Please run install.sh to create it.${NC}"
+        return
+    fi
+    if [ ! -f apikeys.db ]; then
+        echo -e "${YELLOW}No usage data found (apikeys.db missing).${NC}"
+        return
+    fi
+    python3 - <<EOF
+import json, sqlite3
+with open('apikeys.json') as f:
+    keys = json.load(f)['groq_keys']
+conn = sqlite3.connect('apikeys.db')
+c = conn.cursor()
+print(f"{'Key':<16} {'Model':<24} {'Req/min':>8} {'Tok/min':>10} {'Req/day':>8} {'Tok/day':>10}")
+for k in keys:
+    apikey = k['key']
+    for row in c.execute('SELECT model, requests_minute, tokens_minute, requests_today, tokens_today FROM apikey_usage WHERE apikey=?', (apikey,)):
+        model, req_min, tok_min, req_day, tok_day = row
+        print(f"{apikey[:12]}... {model:<24} {req_min:>8} {tok_min:>10} {req_day:>8} {tok_day:>10}")
+conn.close()
+EOF
+}
+
 uninstall_groq() {
     echo -e "${YELLOW}[groq-api] Uninstalling and cleaning up...${NC}"
     SERVICE_NAME=groq-api
@@ -141,13 +168,13 @@ uninstall_groq() {
 
 while true; do
     show_menu
-    read -p "Select an option [1-4]: " opt
+    read -p "Select an option [1-5]: " opt
     case $opt in
         1) update_apikeys ;;
         2) test_proxy ;;
-        3) uninstall_groq ; exit 0 ;;
-        4) exit 0 ;;
+        3) show_usage ;;
+        4) uninstall_groq ; exit 0 ;;
+        5) exit 0 ;;
         *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
     esac
 done
-
