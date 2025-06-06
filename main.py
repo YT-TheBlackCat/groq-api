@@ -43,8 +43,8 @@ def version():
 async def proxy_chat_completions(request: Request):
     auth = request.headers.get("Authorization", "")
     # Debug: log expected and received Authorization header (do not log full key in production)
-    logger.info(f"Expected Authorization: Bearer {API_KEY[:6]}... (length {len(API_KEY)})")
-    logger.info(f"Received Authorization: {auth[:20]}... (length {len(auth)})")
+    logger.info(f"Expected Authorization: Bearer {API_KEY} (length {len(API_KEY)})")
+    logger.info(f"Received Authorization: {auth} (length {len(auth)})")
     if auth != f"Bearer {API_KEY}":
         logger.warning("401 Unauthorized: Authorization header mismatch.")
         raise HTTPException(status_code=401, detail="Invalid API key")
