@@ -19,49 +19,47 @@
      ```
    - If not present, the installer will prompt you to enter your Groq API keys and a custom local API key interactively.
 
-3. Run the interactive install script:
+3. Run the interactive install/update script:
    ```sh
-   sudo bash install.sh
+   sudo bash server.sh
    ```
    - The script uses colored output for clear feedback and suppresses unnecessary terminal spam.
-   - It will set up a virtual environment, install all dependencies, create apikeys.json, and do a debug test run.
-   - You can choose to install the server as a systemd service for auto-start on boot.
+   - It will set up a virtual environment, install all dependencies, create apikeys.json, update from the remote repo, and do a debug test run.
+   - The server is always installed as a systemd service for auto-start on boot.
 
-4. To start the server manually:
+4. To start the server manually (if not running as a service):
    ```sh
-   sudo bash run.sh
+   source venv/bin/activate
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
    The server will be available at http://localhost:8000
 
-5. To install as a service later (if you skipped during install):
+5. To update API keys, test the proxy, or uninstall:
    ```sh
-   sudo bash install-service.sh
+   bash options.sh
    ```
-   This will make the server start automatically on boot.
+   This script provides a menu to update apikeys.json, test the proxy interactively, or uninstall and clean up everything.
 
-6. To test the proxy manually:
+6. To test the proxy manually (Python):
    ```sh
    source venv/bin/activate
    python test_proxy.py
    ```
-   Or use the interactive test script:
-   ```sh
-   bash test.sh
-   ```
    This will prompt you for a model and prompt, send a test request, and show the response. The Authorization header for test requests is always set from the custom_local_api_key in apikeys.json. If apikeys.json is missing, the script will exit with an error.
 
-7. The API key is never hardcoded in any script. All scripts (main.py, test.sh, test_proxy.py) always load the API key from apikeys.json. If apikeys.json is missing, the scripts will exit with an error and prompt you to run install.sh.
+7. The API key is never hardcoded in any script. All scripts (main.py, test_proxy.py) always load the API key from apikeys.json. If apikeys.json is missing, the scripts will exit with an error and prompt you to run server.sh.
 
 8. To update all files except your API keys:
    ```sh
-   bash update.sh
+   sudo bash server.sh
    ```
    This will update all files except apikeys.json and version.txt from the remote repository (git required), add new files, and delete local files not present in the repo.
 
 9. To uninstall and clean up everything:
    ```sh
-   sudo bash uninstall.sh
+   bash options.sh
    ```
+   - Choose the uninstall option from the menu.
    - This will remove the venv, apikeys.json, debug log, __pycache__, the systemd service, and the entire groq-api project folder (if run from within it).
    - The script uses colored output for clear, informative feedback.
 
