@@ -390,7 +390,12 @@ if [[ "$SCRIPT_NAME" == "options.sh" ]]; then
     if ! grep -q 'alias option=' ~/.bashrc; then
         echo "alias option=\"bash $(realpath $0)\"" >> ~/.bashrc
         echo "alias options=\"bash $(realpath $0)\"" >> ~/.bashrc
-        echo -e "${GREEN}[groq-api] Aliases 'option' and 'options' added to your ~/.bashrc. Please run 'source ~/.bashrc' or open a new shell to use them directly.${NC}"
+        echo -e "${GREEN}[groq-api] Aliases 'option' and 'options' added to your ~/.bashrc."
+        # Automatically reload bashrc so aliases are available immediately
+        if [ -n "$BASH_VERSION" ]; then
+            source ~/.bashrc
+            echo -e "${GREEN}[groq-api] ~/.bashrc reloaded. Aliases are now available in this shell.${NC}"
+        fi
     fi
 fi
 

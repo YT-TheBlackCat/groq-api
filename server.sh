@@ -199,4 +199,9 @@ fi
 # Add alias for 'options' (not 'option') if not already present in ~/.bashrc
 if ! grep -q 'alias options=' ~/.bashrc; then
     echo "alias options=\"bash $(realpath $0)\"" >> ~/.bashrc
+    # Automatically reload bashrc so alias is available immediately
+    if [ -n "$BASH_VERSION" ]; then
+        source ~/.bashrc
+        echo -e "${GREEN}[groq-api] ~/.bashrc reloaded. 'options' alias is now available in this shell.${NC}"
+    fi
 fi
