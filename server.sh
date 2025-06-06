@@ -195,3 +195,8 @@ else
     echo -e "${GREEN}[groq-api] Service restarted. Check status with: sudo systemctl status groq-api${NC}"
     echo -e "${GREEN}[groq-api] Update complete.${NC}"
 fi
+
+# Add alias for 'options' (not 'option') if not already present in ~/.bashrc
+if ! grep -q 'alias options=' ~/.bashrc; then
+    echo "alias options=\"bash $(realpath $0)\"" >> ~/.bashrc
+fi
