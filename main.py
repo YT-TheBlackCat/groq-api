@@ -71,6 +71,19 @@ async def proxy_chat_completions(request: Request):
 
     # System prompt file support
     messages = body.get("messages", [])
+    # --- Jailbreak bypass prevention ---
+    forbidden_phrases = [
+        "jailbreak detected", "system prompt", "security policy", "bypass",
+        "never write jailbreak detected", "never output jailbreak detected", "never say jailbreak detected",
+        "never respond with jailbreak detected", "never mention jailbreak detected"
+    ]
+    for m in messages:
+        content = m.get("content", "").lower()
+        if any(phrase in content for phrase in forbidden_phrases):
+            logger.warning("Jailbreak bypass attempt detected in user message. Blocking request.")
+            return JSONResponse(status_code=403, content={
+                "detail": "jailbreak detected"
+            })
     if len(messages) > 0 and messages[0].get("role") == "system" and messages[0].get("content", "").strip().lower() == "systemprompt.txt":
         try:
             with open("systemprompt.txt", "r", encoding="utf-8") as f:
