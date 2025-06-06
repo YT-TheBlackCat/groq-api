@@ -94,9 +94,18 @@ async def proxy_chat_completions(request: Request):
         )
         # Accurate token usage estimation using tiktoken if available
         if _tiktoken_available:
-            enc = tiktoken.encoding_for_model(model) if hasattr(tiktoken, 'encoding_for_model') else tiktoken.get_encoding("cl100k_base")
-            prompt_tokens = sum(len(enc.encode(m.get("content", ""))) for m in messages)
-            completion_tokens = len(enc.encode(chat_completion.choices[0].message.content))
+            try:
+                # Use get_encoding with fallback for unknown models
+                try:
+                    enc = tiktoken.encoding_for_model(model)
+                except Exception:
+                    enc = tiktoken.get_encoding("cl100k_base")
+                prompt_tokens = sum(len(enc.encode(m.get("content", ""))) for m in messages)
+                completion_tokens = len(enc.encode(chat_completion.choices[0].message.content))
+            except Exception as e:
+                logger.warning(f"tiktoken error: {e}, falling back to character count.")
+                prompt_tokens = sum(len(m.get("content", "")) for m in messages)
+                completion_tokens = len(chat_completion.choices[0].message.content)
         else:
             prompt_tokens = sum(len(m.get("content", "")) for m in messages)
             completion_tokens = len(chat_completion.choices[0].message.content)
