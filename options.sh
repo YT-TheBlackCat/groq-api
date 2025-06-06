@@ -226,13 +226,13 @@ while true; do
     show_menu
     read -p "Select an option [1-7]: " opt
     case $opt in
-        1) update_apikeys ;;
-        2) test_proxy ;;
-        3) show_usage ;;
-        4) backup_files ;;
-        5) add_model ;;
+        1) update_apikeys ; exit 0 ;;
+        2) test_proxy ; exit 0 ;;
+        3) show_usage ; exit 0 ;;
+        4) backup_files ; exit 0 ;;
+        5) add_model ; exit 0 ;;
         6) uninstall_groq ; exit 0 ;;
         7) exit 0 ;;
-        *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
+        *) echo -e "${RED}Invalid option. Please try again.${NC}" ; exit 1 ;;
     esac
 done
