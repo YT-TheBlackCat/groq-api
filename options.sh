@@ -54,7 +54,10 @@ show_menu() {
     echo "4) Backup DB and API keys to ~/groq-api-backup/"
     echo "5) Add a new model to the DB"
     echo "6) Uninstall groq-api and clean up"
-    echo "7) Exit"
+    echo "7) Show service and DB status"
+    echo "8) Reset usage counters for a key/model to a value"
+    echo "9) List all available tools/commands"
+    echo "10) Exit"
 }
 
 update_apikeys() {
@@ -332,7 +335,7 @@ if [[ "$1" == "tools" ]]; then list_tools; exit 0; fi
 # Default: show menu
 show_menu
 while true; do
-    read -p "Select an option [1-7]: " opt
+    read -p "Select an option [1-10]: " opt
     case $opt in
         1) update_apikeys ; exit 0 ;;
         2) test_proxy ; exit 0 ;;
@@ -340,7 +343,10 @@ while true; do
         4) backup_files ; exit 0 ;;
         5) add_model ; exit 0 ;;
         6) uninstall_groq ; exit 0 ;;
-        7) exit 0 ;;
+        7) show_status ; exit 0 ;;
+        8) reset_usage_for_key_model ; exit 0 ;;
+        9) list_tools ; exit 0 ;;
+        10) exit 0 ;;
         *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
     esac
 done
