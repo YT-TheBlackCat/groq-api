@@ -156,7 +156,7 @@ add_model() {
     read -p "Max requests per minute (enter - for no limit): " MAX_REQ_MIN
     read -p "Max tokens per minute (enter - for no limit): " MAX_TOK_MIN
     read -p "Max tokens per day (enter - for no limit): " MAX_TOK_DAY
-    # Convert '-' to None in Python
+    # Convert '-' to None in Python and use shell variable expansion in the heredoc
     python3 - <<EOF
 import sys
 import os
@@ -164,6 +164,11 @@ import re
 file = 'apikeymanager.py'
 def parse_limit(val):
     return 'None' if val.strip() == '-' else val.strip()
+MODEL = os.environ.get('MODEL')
+MAX_REQ_DAY = os.environ.get('MAX_REQ_DAY')
+MAX_REQ_MIN = os.environ.get('MAX_REQ_MIN')
+MAX_TOK_MIN = os.environ.get('MAX_TOK_MIN')
+MAX_TOK_DAY = os.environ.get('MAX_TOK_DAY')
 with open(file, 'r', encoding='utf-8') as f:
     code = f.read()
 pattern = r'MODEL_QUOTAS\\s*=\\s*{'
@@ -172,7 +177,7 @@ if not match:
     print('MODEL_QUOTAS not found!')
     sys.exit(1)
 insert_idx = code.find('}', code.find('MODEL_QUOTAS'))
-model_entry = f'    "{MODEL}": {{\n        "max_requests_per_day": {parse_limit("""$MAX_REQ_DAY""")},\n        "max_requests_per_minute": {parse_limit("""$MAX_REQ_MIN""")},\n        "max_tokens_per_minute": {parse_limit("""$MAX_TOK_MIN""")},\n        "max_tokens_per_day": {parse_limit("""$MAX_TOK_DAY""")}\n    }},\n'
+model_entry = f'    "{MODEL}": {{\n        "max_requests_per_day": {parse_limit(MAX_REQ_DAY)},\n        "max_requests_per_minute": {parse_limit(MAX_REQ_MIN)},\n        "max_tokens_per_minute": {parse_limit(MAX_TOK_MIN)},\n        "max_tokens_per_day": {parse_limit(MAX_TOK_DAY)}\n    }},\n'
 code = code[:insert_idx] + model_entry + code[insert_idx:]
 with open(file, 'w', encoding='utf-8') as f:
     f.write(code)
