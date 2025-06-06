@@ -192,15 +192,23 @@ def get_usage(apikey: str, model: str) -> Dict:
     minute_str = now.strftime("%Y-%m-%d %H:%M")
     with sqlite3.connect(DB_PATH, timeout=10) as conn:
         c = conn.cursor()
-        c.execute('''SELECT requests_today, requests_minute, tokens_today, tokens_minute, last_minute FROM apikey_usage WHERE apikey=? AND model=? AND date=?''', (apikey, model, date_str))
+        c.execute('''SELECT requests_today, requests_minute, tokens_today, tokens_minute, last_minute, date FROM apikey_usage WHERE apikey=? AND model=? AND date=?''', (apikey, model, date_str))
         row = c.fetchone()
         if row:
-            requests_today, requests_minute, tokens_today, tokens_minute, last_minute = row
+            requests_today, requests_minute, tokens_today, tokens_minute, last_minute, row_date = row
+            # Reset per-minute usage if minute changed
             if last_minute != minute_str:
                 requests_minute = 0
                 tokens_minute = 0
                 c.execute('''UPDATE apikey_usage SET requests_minute=?, tokens_minute=?, last_minute=? WHERE apikey=? AND model=? AND date=?''',
                           (0, 0, minute_str, apikey, model, date_str))
+                conn.commit()
+            # Reset per-day usage if date changed (should not happen, but for safety)
+            if row_date != date_str:
+                requests_today = 0
+                tokens_today = 0
+                c.execute('''UPDATE apikey_usage SET requests_today=?, tokens_today=?, date=? WHERE apikey=? AND model=? AND date=?''',
+                          (0, 0, date_str, apikey, model, row_date))
                 conn.commit()
             return {
                 "requests_today": requests_today,
@@ -227,13 +235,22 @@ def optimal_apikey(model: str, apikeys: List[str]) -> Optional[str]:
     best_score = -1
     for key in apikeys:
         usage = get_usage(key, model)
-        def rem(maxval, used):
-            return float('inf') if maxval == 0 else maxval - used
-        rem_req_day = rem(quotas["max_requests_per_day"], usage["requests_today"])
-        rem_req_min = rem(quotas["max_requests_per_minute"], usage["requests_minute"])
-        rem_tok_day = rem(quotas["max_tokens_per_day"], usage["tokens_today"])
-        rem_tok_min = rem(quotas["max_tokens_per_minute"], usage["tokens_minute"])
-        score = min(rem_req_day, rem_req_min, rem_tok_day, rem_tok_min)
+        # Only consider quotas that are not unlimited (0 means unlimited)
+        remainders = []
+        for q_name, maxval in quotas.items():
+            used = 0
+            if q_name == "max_requests_per_day":
+                used = usage["requests_today"]
+            elif q_name == "max_requests_per_minute":
+                used = usage["requests_minute"]
+            elif q_name == "max_tokens_per_day":
+                used = usage["tokens_today"]
+            elif q_name == "max_tokens_per_minute":
+                used = usage["tokens_minute"]
+            if maxval != 0:
+                remainders.append(maxval - used)
+        # If all quotas are unlimited, treat as infinite
+        score = min(remainders) if remainders else float('inf')
         if score > best_score:
             best_score = score
             best_key = key
