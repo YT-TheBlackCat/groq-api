@@ -57,6 +57,9 @@ done)
 }
 EOF
     echo -e "${GREEN}[groq-api] apikeys.json updated successfully.${NC}"
+    # Also add the limits for all models for these keys (like on install)
+    echo -e "${BLUE}[groq-api] Pre-populating apikeys.db with all models and API keys...${NC}"
+    python3 -c "import apikeymanager; apikeymanager.init_db_with_limits()"
 }
 
 test_proxy() {
