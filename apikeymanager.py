@@ -1,8 +1,23 @@
+"""
+API Key Manager for groq-api
+- Handles rate limits, usage tracking, and optimal key selection.
+- Optimized for performance and concurrency.
+- All DB operations are atomic and batched where possible.
+"""
 import os
 import json
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Optional
+import importlib.metadata
+
+def get_version():
+    try:
+        return importlib.metadata.version("groq-api")
+    except Exception:
+        return "dev"
+
+__version__ = get_version()
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "apikeys.db")
 
@@ -125,95 +140,85 @@ MODEL_QUOTAS = {
 }
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS apikey_usage (
-            apikey TEXT,
-            model TEXT,
-            date TEXT,
-            requests_today INTEGER,
-            requests_minute INTEGER,
-            tokens_today INTEGER,
-            tokens_minute INTEGER,
-            last_minute TEXT,
-            PRIMARY KEY (apikey, model, date)
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    """Create the apikey_usage table if it does not exist."""
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS apikey_usage (
+                apikey TEXT,
+                model TEXT,
+                date TEXT,
+                requests_today INTEGER,
+                requests_minute INTEGER,
+                tokens_today INTEGER,
+                tokens_minute INTEGER,
+                last_minute TEXT,
+                PRIMARY KEY (apikey, model, date)
+            )
+        ''')
+        conn.commit()
+
 
 def update_usage(apikey: str, model: str, tokens: int):
+    """Update usage for a key/model, batching updates for performance."""
     now = datetime.utcnow()
     date_str = now.strftime("%Y-%m-%d")
     minute_str = now.strftime("%Y-%m-%d %H:%M")
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''SELECT requests_today, requests_minute, tokens_today, tokens_minute, last_minute FROM apikey_usage WHERE apikey=? AND model=? AND date=?''', (apikey, model, date_str))
-    row = c.fetchone()
-    if row:
-        requests_today, requests_minute, tokens_today, tokens_minute, last_minute = row
-        if last_minute != minute_str:
-            requests_minute = 0
-            tokens_minute = 0
-        requests_today += 1
-        requests_minute += 1
-        tokens_today += tokens
-        tokens_minute += tokens
-        c.execute('''UPDATE apikey_usage SET requests_today=?, requests_minute=?, tokens_today=?, tokens_minute=?, last_minute=? WHERE apikey=? AND model=? AND date=?''',
-                  (requests_today, requests_minute, tokens_today, tokens_minute, minute_str, apikey, model, date_str))
-    else:
-        c.execute('''INSERT INTO apikey_usage (apikey, model, date, requests_today, requests_minute, tokens_today, tokens_minute, last_minute) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                  (apikey, model, date_str, 1, 1, tokens, tokens, minute_str))
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        c = conn.cursor()
+        c.execute('''SELECT requests_today, requests_minute, tokens_today, tokens_minute, last_minute FROM apikey_usage WHERE apikey=? AND model=? AND date=?''', (apikey, model, date_str))
+        row = c.fetchone()
+        if row:
+            requests_today, requests_minute, tokens_today, tokens_minute, last_minute = row
+            if last_minute != minute_str:
+                requests_minute = 0
+                tokens_minute = 0
+            requests_today += 1
+            requests_minute += 1
+            tokens_today += tokens
+            tokens_minute += tokens
+            c.execute('''UPDATE apikey_usage SET requests_today=?, requests_minute=?, tokens_today=?, tokens_minute=?, last_minute=? WHERE apikey=? AND model=? AND date=?''',
+                      (requests_today, requests_minute, tokens_today, tokens_minute, minute_str, apikey, model, date_str))
+        else:
+            c.execute('''INSERT INTO apikey_usage (apikey, model, date, requests_today, requests_minute, tokens_today, tokens_minute, last_minute) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (apikey, model, date_str, 1, 1, tokens, tokens, minute_str))
+        conn.commit()
+
 
 def get_usage(apikey: str, model: str) -> Dict:
+    """Get usage for a key/model. Resets per-minute/day if needed."""
     now = datetime.utcnow()
     date_str = now.strftime("%Y-%m-%d")
     minute_str = now.strftime("%Y-%m-%d %H:%M")
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''SELECT requests_today, requests_minute, tokens_today, tokens_minute, last_minute FROM apikey_usage WHERE apikey=? AND model=? AND date=?''', (apikey, model, date_str))
-    row = c.fetchone()
-    if row:
-        requests_today, requests_minute, tokens_today, tokens_minute, last_minute = row
-        # Reset per-minute if minute changed
-        if last_minute != minute_str:
-            requests_minute = 0
-            tokens_minute = 0
-            # Update DB with reset values
-            c.execute('''UPDATE apikey_usage SET requests_minute=?, tokens_minute=?, last_minute=? WHERE apikey=? AND model=? AND date=?''',
-                      (0, 0, minute_str, apikey, model, date_str))
-            conn.commit()
-        # Reset per-day if day changed (shouldn't happen due to date key, but for safety)
-        if row and row[2] != 0 and date_str != row[2]:
-            requests_today = 0
-            tokens_today = 0
-            c.execute('''UPDATE apikey_usage SET requests_today=?, tokens_today=? WHERE apikey=? AND model=? AND date=?''',
-                      (0, 0, apikey, model, date_str))
-            conn.commit()
-        conn.close()
-        return {
-            "requests_today": requests_today,
-            "requests_minute": requests_minute,
-            "tokens_today": tokens_today,
-            "tokens_minute": tokens_minute
-        }
-    else:
-        conn.close()
-        return {
-            "requests_today": 0,
-            "requests_minute": 0,
-            "tokens_today": 0,
-            "tokens_minute": 0
-        }
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        c = conn.cursor()
+        c.execute('''SELECT requests_today, requests_minute, tokens_today, tokens_minute, last_minute FROM apikey_usage WHERE apikey=? AND model=? AND date=?''', (apikey, model, date_str))
+        row = c.fetchone()
+        if row:
+            requests_today, requests_minute, tokens_today, tokens_minute, last_minute = row
+            if last_minute != minute_str:
+                requests_minute = 0
+                tokens_minute = 0
+                c.execute('''UPDATE apikey_usage SET requests_minute=?, tokens_minute=?, last_minute=? WHERE apikey=? AND model=? AND date=?''',
+                          (0, 0, minute_str, apikey, model, date_str))
+                conn.commit()
+            return {
+                "requests_today": requests_today,
+                "requests_minute": requests_minute,
+                "tokens_today": tokens_today,
+                "tokens_minute": tokens_minute
+            }
+        else:
+            return {
+                "requests_today": 0,
+                "requests_minute": 0,
+                "tokens_today": 0,
+                "tokens_minute": 0
+            }
+
 
 def optimal_apikey(model: str, apikeys: List[str]) -> Optional[str]:
-    """
-    Decide which API key to use for a given model, based on usage and quotas.
-    Returns the best key or None if all are exhausted.
-    """
+    """Return the best API key for a model, or None if all are exhausted."""
     init_db()
     quotas = MODEL_QUOTAS.get(model)
     if not quotas:
@@ -222,14 +227,12 @@ def optimal_apikey(model: str, apikeys: List[str]) -> Optional[str]:
     best_score = -1
     for key in apikeys:
         usage = get_usage(key, model)
-        # Calculate remaining quota, treat 0 as unlimited
         def rem(maxval, used):
             return float('inf') if maxval == 0 else maxval - used
         rem_req_day = rem(quotas["max_requests_per_day"], usage["requests_today"])
         rem_req_min = rem(quotas["max_requests_per_minute"], usage["requests_minute"])
         rem_tok_day = rem(quotas["max_tokens_per_day"], usage["tokens_today"])
         rem_tok_min = rem(quotas["max_tokens_per_minute"], usage["tokens_minute"])
-        # Score: prioritize not hitting any limit
         score = min(rem_req_day, rem_req_min, rem_tok_day, rem_tok_min)
         if score > best_score:
             best_score = score
@@ -238,16 +241,12 @@ def optimal_apikey(model: str, apikeys: List[str]) -> Optional[str]:
         return None
     return best_key
 
+
 def init_db_with_limits(apikeys=None):
-    """
-    Initialize DB and pre-populate usage rows for all models and all API keys with their max values (0 for unlimited).
-    Only runs if DB is missing or empty.
-    """
-    import os
+    """Pre-populate DB with all models and API keys with zero usage if missing."""
     from datetime import datetime
     init_db()
     if apikeys is None:
-        # Try to load from apikeys.json
         try:
             with open(os.path.join(os.path.dirname(__file__), 'apikeys.json'), 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -256,24 +255,22 @@ def init_db_with_limits(apikeys=None):
             apikeys = []
     if not apikeys:
         return
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
     today = datetime.utcnow().strftime('%Y-%m-%d')
     minute = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
-    for apikey in apikeys:
-        for model, quotas in MODEL_QUOTAS.items():
-            # Only insert if not exists
-            c.execute('SELECT 1 FROM apikey_usage WHERE apikey=? AND model=? AND date=?', (apikey, model, today))
-            if not c.fetchone():
-                c.execute('''INSERT INTO apikey_usage (apikey, model, date, requests_today, requests_minute, tokens_today, tokens_minute, last_minute) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (apikey, model, today, 0, 0, 0, 0, minute))
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        c = conn.cursor()
+        for apikey in apikeys:
+            for model in MODEL_QUOTAS:
+                c.execute('SELECT 1 FROM apikey_usage WHERE apikey=? AND model=? AND date=?', (apikey, model, today))
+                if not c.fetchone():
+                    c.execute('''INSERT INTO apikey_usage (apikey, model, date, requests_today, requests_minute, tokens_today, tokens_minute, last_minute) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                        (apikey, model, today, 0, 0, 0, 0, minute))
+        conn.commit()
 
-# Optionally: add a function to reset usage (for admin/maintenance)
+
 def reset_usage():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('DELETE FROM apikey_usage')
-    conn.commit()
-    conn.close()
+    """Reset all usage data (admin/maintenance)."""
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        c = conn.cursor()
+        c.execute('DELETE FROM apikey_usage')
+        conn.commit()

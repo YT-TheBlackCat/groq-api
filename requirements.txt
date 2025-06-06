@@ -1,5 +1,5 @@
-fastapi
-httpx
-uvicorn
-groq
-requests
+# No longer needed: requirements are auto-installed by server.sh
+# See server.sh for the list of required packages:
+# fastapi, httpx, uvicorn, groq, requests
+# This file is kept for compatibility but is not used by the installer.
+

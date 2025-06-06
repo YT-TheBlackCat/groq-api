@@ -13,6 +13,14 @@ EXCLUDE="apikeys.json version.txt"
 UPDATED=0
 CHANGED_FILES=()
 
+# --- Requirements auto-install (no requirements.txt needed) ---
+function ensure_python_requirements() {
+    echo -e "${BLUE}[groq-api] Ensuring Python requirements...${NC}"
+    source venv/bin/activate
+    pip install --upgrade pip > /dev/null 2>&1
+    pip install fastapi httpx uvicorn groq requests > /dev/null 2>&1
+}
+
 # Detect install or update mode
 if [ ! -f "venv/bin/activate" ] || [ ! -f "apikeys.json" ]; then
     MODE="install"
@@ -36,7 +44,7 @@ if [ "$MODE" = "install" ]; then
     fi
 
     # Check for global apikeys.json in /home/$USER/apikeys.json
-    GLOBAL_APIKEYS="/home/pi/apikeys.json"
+    GLOBAL_APIKEYS="/home/$USER/apikeys.json"
     if [ ! -f "apikeys.json" ] && [ -f "$GLOBAL_APIKEYS" ]; then
         echo -e "${GREEN}[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it.${NC}"
         cp "$GLOBAL_APIKEYS" apikeys.json
@@ -90,13 +98,8 @@ EOF
         python3 -m venv venv
     fi
 
-    # Activate venv
-    source venv/bin/activate
-
-    # Upgrade pip and install dependencies
-    echo -en "${BLUE}[groq-api] Installing dependencies...${NC} "
-    pip install --upgrade pip > /dev/null 2>&1
-    pip install -r requirements.txt > /dev/null 2>&1 && echo -e "${GREEN}done${NC}"
+    # Activate venv and install requirements (no requirements.txt needed)
+    ensure_python_requirements
 
     # Ensure apikeys.db exists by initializing it if missing
     if [ ! -f "apikeys.db" ]; then
@@ -183,6 +186,9 @@ else
     else
         echo -e "${YELLOW}[groq-api] All files are already up to date. No changes made.${NC}"
     fi
+
+    # Reinstall requirements on update
+    ensure_python_requirements
 
     # Restart service after update
     sudo systemctl restart groq-api

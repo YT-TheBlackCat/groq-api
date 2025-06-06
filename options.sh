@@ -1,12 +1,48 @@
 #!/bin/bash
 set -e
 
+# --- Modern CLI for groq-api ---
+# Usage: ./options.sh [command] [options]
+# Run with --help for usage info
+
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+VERSION="1.0.0"
+
+# Requirements check (auto-install pip/venv if missing)
+function check_requirements() {
+    command -v python3 >/dev/null || { echo -e "${RED}Python3 is required!${NC}"; exit 1; }
+    command -v pip >/dev/null || { echo -e "${YELLOW}pip not found. Installing...${NC}"; python3 -m ensurepip --upgrade; }
+    command -v virtualenv >/dev/null || pip install virtualenv
+}
+
+function usage() {
+    echo -e "${BLUE}groq-api CLI v$VERSION${NC}"
+    echo "Usage: $0 [command]"
+    echo "Commands:"
+    echo "  menu           Interactive menu (default if no command)"
+    echo "  update-keys    Update API keys (interactive)"
+    echo "  test           Test the API proxy (interactive)"
+    echo "  usage          Show API key usage information"
+    echo "  backup         Backup DB and API keys to ~/groq-api-backup/"
+    echo "  add-model      Add a new model to the DB"
+    echo "  uninstall      Uninstall groq-api and clean up"
+    echo "  status         Show service and DB status"
+    echo "  --help         Show this help message"
+    echo "  --version      Show version"
+}
+
+function show_status() {
+    echo -e "${BLUE}[groq-api] Status:${NC}"
+    systemctl status groq-api --no-pager || echo -e "${YELLOW}Service not found.${NC}"
+    [ -f apikeys.json ] && echo -e "${GREEN}apikeys.json present${NC}" || echo -e "${RED}apikeys.json missing${NC}"
+    [ -f apikeys.db ] && echo -e "${GREEN}apikeys.db present${NC}" || echo -e "${RED}apikeys.db missing${NC}"
+}
 
 show_menu() {
     echo -e "${BLUE}groq-api options:${NC}"
@@ -253,8 +289,20 @@ uninstall_groq() {
     echo -e "${GREEN}[groq-api] Uninstallation complete.${NC}"
 }
 
+# --- Argument parsing ---
+if [[ "$1" == "--help" ]]; then usage; exit 0; fi
+if [[ "$1" == "--version" ]]; then echo "$VERSION"; exit 0; fi
+if [[ "$1" == "status" ]]; then show_status; exit 0; fi
+if [[ "$1" == "update-keys" ]]; then update_apikeys; exit 0; fi
+if [[ "$1" == "test" ]]; then test_proxy; exit 0; fi
+if [[ "$1" == "usage" ]]; then show_usage; exit 0; fi
+if [[ "$1" == "backup" ]]; then backup_files; exit 0; fi
+if [[ "$1" == "add-model" ]]; then add_model; exit 0; fi
+if [[ "$1" == "uninstall" ]]; then uninstall_groq; exit 0; fi
+
+# Default: show menu
+show_menu
 while true; do
-    show_menu
     read -p "Select an option [1-7]: " opt
     case $opt in
         1) update_apikeys ; exit 0 ;;
@@ -264,6 +312,7 @@ while true; do
         5) add_model ; exit 0 ;;
         6) uninstall_groq ; exit 0 ;;
         7) exit 0 ;;
-        *) echo -e "${RED}Invalid option. Please try again.${NC}" ; exit 1 ;;
+        *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
     esac
 done
+
