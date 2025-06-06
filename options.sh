@@ -320,33 +320,102 @@ list_tools() {
 }
 
 # --- Argument parsing ---
-if [[ "$1" == "--help" ]]; then usage; exit 0; fi
-if [[ "$1" == "--version" ]]; then echo "$VERSION"; exit 0; fi
-if [[ "$1" == "status" ]]; then show_status; exit 0; fi
-if [[ "$1" == "update-keys" ]]; then update_apikeys; exit 0; fi
-if [[ "$1" == "test" ]]; then test_proxy; exit 0; fi
-if [[ "$1" == "usage" ]]; then show_usage; exit 0; fi
-if [[ "$1" == "backup" ]]; then backup_files; exit 0; fi
-if [[ "$1" == "add-model" ]]; then add_model; exit 0; fi
-if [[ "$1" == "uninstall" ]]; then uninstall_groq; exit 0; fi
-if [[ "$1" == "reset-usage" ]]; then reset_usage_for_key_model; exit 0; fi
-if [[ "$1" == "tools" ]]; then list_tools; exit 0; fi
+# Accept calling as 'option' or 'options' as well as 'bash options.sh'
+SCRIPT_NAME=$(basename "$0")
+if [[ "$SCRIPT_NAME" == "option" || "$SCRIPT_NAME" == "options" ]]; then
+    set -- "$@"
+fi
 
-# Default: show menu
-show_menu
-while true; do
-    read -p "Select an option [1-10]: " opt
-    case $opt in
-        1) update_apikeys ; exit 0 ;;
-        2) test_proxy ; exit 0 ;;
-        3) show_usage ; exit 0 ;;
-        4) backup_files ; exit 0 ;;
-        5) add_model ; exit 0 ;;
-        6) uninstall_groq ; exit 0 ;;
-        7) show_status ; exit 0 ;;
-        8) reset_usage_for_key_model ; exit 0 ;;
-        9) list_tools ; exit 0 ;;
-        10) exit 0 ;;
-        *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
+# Helper: allow passing arguments to tools directly
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        reset-usage)
+            if [[ $# -ge 3 ]]; then
+                APIKEY="$2"; MODEL="$3"; VALUE="${4:-0}"
+                python3 -c "import apikeymanager; apikeymanager.reset_usage_for_key_model('$APIKEY', '$MODEL', int('$VALUE'))"
+                echo -e "${GREEN}[groq-api] Usage counters reset for key $APIKEY and model $MODEL to $VALUE.${NC}"
+                exit 0
+            else
+                reset_usage_for_key_model; exit 0
+            fi
+            ;;
+        add-model)
+            if [[ $# -ge 5 ]]; then
+                MODEL="$2"; MAX_REQ_DAY="$3"; MAX_REQ_MIN="$4"; MAX_TOK_MIN="$5"; MAX_TOK_DAY="${6:-0}"
+                export MODEL MAX_REQ_DAY MAX_REQ_MIN MAX_TOK_MIN MAX_TOK_DAY
+                python3 - <<EOF
+import sys, os, re
+file = 'apikeymanager.py'
+def parse_limit(val):
+    if val is None or val.strip() == '' or val.strip() == '-':
+        return '0'
+    return val.strip()
+MODEL = os.environ.get('MODEL')
+MAX_REQ_DAY = os.environ.get('MAX_REQ_DAY')
+MAX_REQ_MIN = os.environ.get('MAX_REQ_MIN')
+MAX_TOK_MIN = os.environ.get('MAX_TOK_MIN')
+MAX_TOK_DAY = os.environ.get('MAX_TOK_DAY')
+with open(file, 'r', encoding='utf-8') as f:
+    code = f.read()
+pattern = r'MODEL_QUOTAS\\s*=\\s*{'
+match = re.search(pattern, code)
+if not match:
+    print('MODEL_QUOTAS not found!')
+    sys.exit(1)
+insert_idx = code.find('}', code.find('MODEL_QUOTAS'))
+model_entry = f'    "{MODEL}": {{\n        "max_requests_per_day": {parse_limit(MAX_REQ_DAY)},\n        "max_requests_per_minute": {parse_limit(MAX_REQ_MIN)},\n        "max_tokens_per_minute": {parse_limit(MAX_TOK_MIN)},\n        "max_tokens_per_day": {parse_limit(MAX_TOK_DAY)}\n    }},\n'
+code = code[:insert_idx] + model_entry + code[insert_idx:]
+with open(file, 'w', encoding='utf-8') as f:
+    f.write(code)
+print(f"Added model {MODEL} to apikeymanager.py")
+EOF
+                exit 0
+            else
+                add_model; exit 0
+            fi
+            ;;
+        update-keys) update_apikeys; exit 0 ;;
+        test) test_proxy; exit 0 ;;
+        usage) show_usage; exit 0 ;;
+        backup) backup_files; exit 0 ;;
+        uninstall) uninstall_groq; exit 0 ;;
+        status) show_status; exit 0 ;;
+        tools) list_tools; exit 0 ;;
+        --help) usage; exit 0 ;;
+        --version) echo "$VERSION"; exit 0 ;;
     esac
-done
+fi
+
+if [[ "$SCRIPT_NAME" == "options.sh" ]]; then
+    if ! grep -q 'alias option=' ~/.bashrc; then
+        echo "alias option=\"bash $(realpath $0)\"" >> ~/.bashrc
+        echo "alias options=\"bash $(realpath $0)\"" >> ~/.bashrc
+        echo -e "${GREEN}[groq-api] Aliases 'option' and 'options' added to your ~/.bashrc. Please run 'source ~/.bashrc' or open a new shell to use them directly.${NC}"
+    fi
+fi
+
+# If no valid command was given, show the menu
+default_menu=true
+if [[ $# -eq 0 ]]; then
+    default_menu=true
+fi
+
+if $default_menu; then
+    show_menu
+    while true; do
+        read -p "Select an option [1-10]: " opt
+        case $opt in
+            1) update_apikeys ; exit 0 ;;
+            2) test_proxy ; exit 0 ;;
+            3) show_usage ; exit 0 ;;
+            4) backup_files ; exit 0 ;;
+            5) add_model ; exit 0 ;;
+            6) uninstall_groq ; exit 0 ;;
+            7) show_status ; exit 0 ;;
+            8) reset_usage_for_key_model ; exit 0 ;;
+            9) list_tools ; exit 0 ;;
+            10) exit 0 ;;
+            *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
+        esac
+    done
+fi
