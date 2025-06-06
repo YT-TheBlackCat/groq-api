@@ -116,28 +116,49 @@ show_usage() {
         return
     fi
     python3 - <<EOF
-import json, sqlite3
-from apikeymanager import MODEL_QUOTAS
-with open('apikeys.json') as f:
-    keys = json.load(f)['groq_keys']
-conn = sqlite3.connect('apikeys.db')
-c = conn.cursor()
-print(f"{'Key':<16} {'Model':<24} {'Req/min':>8} {'Rem/min':>8} {'Tok/min':>10} {'RemTok/min':>10} {'Req/day':>8} {'Rem/day':>8} {'Tok/day':>10} {'RemTok/day':>10}")
-for k in keys:
-    apikey = k['key']
-    for row in c.execute('SELECT model, requests_minute, tokens_minute, requests_today, tokens_today FROM apikey_usage WHERE apikey=?', (apikey,)):
-        model, req_min, tok_min, req_day, tok_day = row
-        quotas = MODEL_QUOTAS.get(model, {})
-        max_req_min = quotas.get('max_requests_per_minute', 0)
-        max_tok_min = quotas.get('max_tokens_per_minute', 0)
-        max_req_day = quotas.get('max_requests_per_day', 0)
-        max_tok_day = quotas.get('max_tokens_per_day', 0)
-        rem_req_min = max_req_min - req_min
-        rem_tok_min = max_tok_min - tok_min
-        rem_req_day = max_req_day - req_day
-        rem_tok_day = max_tok_day - tok_day
-        print(f"{apikey[:12]}... {model:<24} {req_min:>8} {rem_req_min:>8} {tok_min:>10} {rem_tok_min:>10} {req_day:>8} {rem_req_day:>8} {tok_day:>10} {rem_tok_day:>10}")
-conn.close()
+def show_usage():
+    print(f"[groq-api] API key usage information:")
+    import json, sqlite3
+    from apikeymanager import MODEL_QUOTAS
+    with open('apikeys.json') as f:
+        keys = json.load(f)['groq_keys']
+    conn = sqlite3.connect('apikeys.db')
+    c = conn.cursor()
+    # Gather all rows to determine max model name length and number widths
+    rows = []
+    max_model_len = len('Model')
+    max_key_len = len('Key')
+    max_vals = [len(h) for h in ['Req/min','Rem/min','Tok/min','RemTok/min','Req/day','Rem/day','Tok/day','RemTok/day']]
+    for k in keys:
+        apikey = k['key']
+        for row in c.execute('SELECT model, requests_minute, tokens_minute, requests_today, tokens_today FROM apikey_usage WHERE apikey=?', (apikey,)):
+            model, req_min, tok_min, req_day, tok_day = row
+            quotas = MODEL_QUOTAS.get(model, {})
+            max_req_min = quotas.get('max_requests_per_minute', 0)
+            max_tok_min = quotas.get('max_tokens_per_minute', 0)
+            max_req_day = quotas.get('max_requests_per_day', 0)
+            max_tok_day = quotas.get('max_tokens_per_day', 0)
+            rem_req_min = max_req_min - req_min
+            rem_tok_min = max_tok_min - tok_min
+            rem_req_day = max_req_day - req_day
+            rem_tok_day = max_tok_day - tok_day
+            key_disp = apikey[:12]+'...'
+            max_key_len = max(max_key_len, len(key_disp))
+            max_model_len = max(max_model_len, len(model))
+            vals = [req_min, rem_req_min, tok_min, rem_tok_min, req_day, rem_req_day, tok_day, rem_tok_day]
+            for i, v in enumerate(vals):
+                max_vals[i] = max(max_vals[i], len(str(v)))
+            rows.append((key_disp, model, *vals))
+    # Print header
+    print(f"{'Key':<{max_key_len}} {'Model':<{max_model_len}} " +
+          f" {'Req/min':>{max_vals[0]}} {'Rem/min':>{max_vals[1]}} {'Tok/min':>{max_vals[2]}} {'RemTok/min':>{max_vals[3]}} " +
+          f"{'Req/day':>{max_vals[4]}} {'Rem/day':>{max_vals[5]}} {'Tok/day':>{max_vals[6]}} {'RemTok/day':>{max_vals[7]}}")
+    for row in rows:
+        key_disp, model, *vals = row
+        print(f"{key_disp:<{max_key_len}} {model:<{max_model_len}} " +
+              " ".join(f"{v:>{w}}" for v, w in zip(vals, max_vals)))
+    conn.close()
+show_usage()
 EOF
 }
 
