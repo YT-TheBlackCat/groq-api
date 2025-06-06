@@ -13,8 +13,10 @@ show_menu() {
     echo "1) Update API keys (apikeys.json)"
     echo "2) Test the API proxy (interactive)"
     echo "3) Show API key usage information"
-    echo "4) Uninstall groq-api and clean up"
-    echo "5) Exit"
+    echo "4) Backup DB and API keys to ~/groq-api-backup/"
+    echo "5) Add a new model to the DB"
+    echo "6) Uninstall groq-api and clean up"
+    echo "7) Exit"
 }
 
 update_apikeys() {
@@ -115,17 +117,63 @@ show_usage() {
     fi
     python3 - <<EOF
 import json, sqlite3
+from apikeymanager import MODEL_QUOTAS
 with open('apikeys.json') as f:
     keys = json.load(f)['groq_keys']
 conn = sqlite3.connect('apikeys.db')
 c = conn.cursor()
-print(f"{'Key':<16} {'Model':<24} {'Req/min':>8} {'Tok/min':>10} {'Req/day':>8} {'Tok/day':>10}")
+print(f"{'Key':<16} {'Model':<24} {'Req/min':>8} {'Rem/min':>8} {'Tok/min':>10} {'RemTok/min':>10} {'Req/day':>8} {'Rem/day':>8} {'Tok/day':>10} {'RemTok/day':>10}")
 for k in keys:
     apikey = k['key']
     for row in c.execute('SELECT model, requests_minute, tokens_minute, requests_today, tokens_today FROM apikey_usage WHERE apikey=?', (apikey,)):
         model, req_min, tok_min, req_day, tok_day = row
-        print(f"{apikey[:12]}... {model:<24} {req_min:>8} {tok_min:>10} {req_day:>8} {tok_day:>10}")
+        quotas = MODEL_QUOTAS.get(model, {})
+        max_req_min = quotas.get('max_requests_per_minute', 0)
+        max_tok_min = quotas.get('max_tokens_per_minute', 0)
+        max_req_day = quotas.get('max_requests_per_day', 0)
+        max_tok_day = quotas.get('max_tokens_per_day', 0)
+        rem_req_min = max_req_min - req_min
+        rem_tok_min = max_tok_min - tok_min
+        rem_req_day = max_req_day - req_day
+        rem_tok_day = max_tok_day - tok_day
+        print(f"{apikey[:12]}... {model:<24} {req_min:>8} {rem_req_min:>8} {tok_min:>10} {rem_tok_min:>10} {req_day:>8} {rem_req_day:>8} {tok_day:>10} {rem_tok_day:>10}")
 conn.close()
+EOF
+}
+
+backup_files() {
+    BACKUP_DIR="$HOME/groq-api-backup"
+    mkdir -p "$BACKUP_DIR"
+    cp -v apikeys.json "$BACKUP_DIR/" 2>/dev/null || echo "apikeys.json not found."
+    cp -v apikeys.db "$BACKUP_DIR/" 2>/dev/null || echo "apikeys.db not found."
+    echo -e "${GREEN}[groq-api] Backup complete. Files saved to $BACKUP_DIR${NC}"
+}
+
+add_model() {
+    echo -e "${YELLOW}[groq-api] Add a new model to the DB (apikeymanager.py)${NC}"
+    read -p "Model name: " MODEL
+    read -p "Max requests per day: " MAX_REQ_DAY
+    read -p "Max requests per minute: " MAX_REQ_MIN
+    read -p "Max tokens per minute: " MAX_TOK_MIN
+    read -p "Max tokens per day: " MAX_TOK_DAY
+    python3 - <<EOF
+import sys
+import os
+import re
+file = 'apikeymanager.py'
+with open(file, 'r', encoding='utf-8') as f:
+    code = f.read()
+pattern = r'MODEL_QUOTAS\s*=\s*{'
+match = re.search(pattern, code)
+if not match:
+    print('MODEL_QUOTAS not found!')
+    sys.exit(1)
+insert_idx = code.find('}', code.find('MODEL_QUOTAS'))
+model_entry = f'    "{MODEL}": {{\n        "max_requests_per_day": {MAX_REQ_DAY},\n        "max_requests_per_minute": {MAX_REQ_MIN},\n        "max_tokens_per_minute": {MAX_TOK_MIN},\n        "max_tokens_per_day": {MAX_TOK_DAY}\n    }},\n'
+code = code[:insert_idx] + model_entry + code[insert_idx:]
+with open(file, 'w', encoding='utf-8') as f:
+    f.write(code)
+print(f"Added model {MODEL} to apikeymanager.py")
 EOF
 }
 
@@ -168,13 +216,15 @@ uninstall_groq() {
 
 while true; do
     show_menu
-    read -p "Select an option [1-5]: " opt
+    read -p "Select an option [1-7]: " opt
     case $opt in
         1) update_apikeys ;;
         2) test_proxy ;;
         3) show_usage ;;
-        4) uninstall_groq ; exit 0 ;;
-        5) exit 0 ;;
+        4) backup_files ;;
+        5) add_model ;;
+        6) uninstall_groq ; exit 0 ;;
+        7) exit 0 ;;
         *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
     esac
 done

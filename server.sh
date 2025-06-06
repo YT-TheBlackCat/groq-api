@@ -24,6 +24,17 @@ echo -e "${BLUE}[groq-api] Detected mode: $MODE${NC}"
 
 if [ "$MODE" = "install" ]; then
     # --- Install Section ---
+    # Check for backup in ~/groq-api-backup
+    BACKUP_DIR="$HOME/groq-api-backup"
+    if [ ! -f "apikeys.json" ] && [ -f "$BACKUP_DIR/apikeys.json" ]; then
+        echo -e "${YELLOW}[groq-api] Found apikeys.json backup in $BACKUP_DIR. Restoring...${NC}"
+        cp "$BACKUP_DIR/apikeys.json" apikeys.json
+    fi
+    if [ ! -f "apikeys.db" ] && [ -f "$BACKUP_DIR/apikeys.db" ]; then
+        echo -e "${YELLOW}[groq-api] Found apikeys.db backup in $BACKUP_DIR. Restoring...${NC}"
+        cp "$BACKUP_DIR/apikeys.db" apikeys.db
+    fi
+
     # Check for global apikeys.json in /home/$USER/apikeys.json
     GLOBAL_APIKEYS="/home/pi/apikeys.json"
     CUSTOM_API_KEY=""

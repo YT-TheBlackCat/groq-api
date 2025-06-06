@@ -48,6 +48,17 @@ async def proxy_chat_completions(request: Request):
     else:
         raise HTTPException(status_code=400, detail="Invalid model specified")
 
+    # If system prompt chatbot is requested, use systemprompt.txt as the system message
+    messages = body.get("messages", [])
+    if len(messages) > 0 and messages[0].get("role") == "system" and messages[0].get("content", "").strip().lower() == "systemprompt.txt":
+        try:
+            with open("systemprompt.txt", "r", encoding="utf-8") as f:
+                system_prompt = f.read().strip()
+            # Replace the first message with the system prompt
+            messages[0]["content"] = system_prompt
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Could not read systemprompt.txt: {e}")
+
     apikeys = [k["key"] for k in load_apikeys()["groq_keys"]]
     best_key = optimal_apikey(model, apikeys)
     if not best_key:
@@ -59,11 +70,11 @@ async def proxy_chat_completions(request: Request):
     client = Groq(api_key=best_key)
     try:
         chat_completion = client.chat.completions.create(
-            messages=body.get("messages", []),
+            messages=messages,
             model=model,
         )
         # Estimate token usage (very rough, for demo)
-        prompt_tokens = sum(len(m.get("content", "")) for m in body.get("messages", []))
+        prompt_tokens = sum(len(m.get("content", "")) for m in messages)
         completion_tokens = len(chat_completion.choices[0].message.content)
         total_tokens = prompt_tokens + completion_tokens
         update_usage(best_key, model, total_tokens)
