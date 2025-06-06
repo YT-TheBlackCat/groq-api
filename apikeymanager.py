@@ -8,35 +8,119 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "apikeys.db")
 
 # Model quota configuration (static, can be extended)
 MODEL_QUOTAS = {
-    "llama-2-7b": {
-        "max_requests_per_day": 10000,
-        "max_requests_per_minute": 100,
-        "max_tokens_per_minute": 120000,
-        "max_tokens_per_day": 10000000
+    "allam-2-7b": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 7000,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 0
     },
-    "llama-3-8b-instant": {
-        "max_requests_per_day": 10000,
-        "max_requests_per_minute": 100,
-        "max_tokens_per_minute": 120000,
-        "max_tokens_per_day": 10000000
+    "compound-beta": {
+        "max_requests_per_minute": 15,
+        "max_requests_per_day": 200,
+        "max_tokens_per_minute": 70000,
+        "max_tokens_per_day": 0
     },
-    "llama-3-70b-8192": {
-        "max_requests_per_day": 10000,
-        "max_requests_per_minute": 100,
-        "max_tokens_per_minute": 120000,
-        "max_tokens_per_day": 10000000
+    "compound-beta-mini": {
+        "max_requests_per_minute": 15,
+        "max_requests_per_day": 200,
+        "max_tokens_per_minute": 70000,
+        "max_tokens_per_day": 0
     },
-    "deepseek-llm-67b": {
-        "max_requests_per_day": 10000,
-        "max_requests_per_minute": 100,
-        "max_tokens_per_minute": 120000,
-        "max_tokens_per_day": 10000000
+    "deepseek-r1-distill-llama-70b": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 1000,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 0
     },
-    "qwen-32b": {
-        "max_requests_per_day": 10000,
-        "max_requests_per_minute": 100,
-        "max_tokens_per_minute": 120000,
-        "max_tokens_per_day": 10000000
+    "gemma2-9b-it": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 15000,
+        "max_tokens_per_day": 500000
+    },
+    "llama-3.1-8b-instant": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 500000
+    },
+    "llama-3.3-70b-versatile": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 1000,
+        "max_tokens_per_minute": 12000,
+        "max_tokens_per_day": 100000
+    },
+    "llama-guard-3-8b": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 15000,
+        "max_tokens_per_day": 500000
+    },
+    "llama3-70b-8192": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 500000
+    },
+    "llama3-8b-8192": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 500000
+    },
+    "meta-llama/llama-4-maverick-17b-128e-instruct": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 1000,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 0
+    },
+    "meta-llama/llama-4-scout-17b-16e-instruct": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 1000,
+        "max_tokens_per_minute": 30000,
+        "max_tokens_per_day": 0
+    },
+    "meta-llama/llama-guard-4-12b": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 15000,
+        "max_tokens_per_day": 500000
+    },
+    "meta-llama/llama-prompt-guard-2-22m": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 15000,
+        "max_tokens_per_day": 0
+    },
+    "meta-llama/llama-prompt-guard-2-86m": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 14400,
+        "max_tokens_per_minute": 15000,
+        "max_tokens_per_day": 0
+    },
+    "mistral-saba-24b": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 1000,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 500000
+    },
+    "playai-tts": {
+        "max_requests_per_minute": 10,
+        "max_requests_per_day": 100,
+        "max_tokens_per_minute": 1200,
+        "max_tokens_per_day": 3600
+    },
+    "playai-tts-arabic": {
+        "max_requests_per_minute": 10,
+        "max_requests_per_day": 100,
+        "max_tokens_per_minute": 1200,
+        "max_tokens_per_day": 3600
+    },
+    "qwen-qwq-32b": {
+        "max_requests_per_minute": 30,
+        "max_requests_per_day": 1000,
+        "max_tokens_per_minute": 6000,
+        "max_tokens_per_day": 0
     },
 }
 
@@ -153,6 +237,38 @@ def optimal_apikey(model: str, apikeys: List[str]) -> Optional[str]:
     if best_score <= 0:
         return None
     return best_key
+
+def init_db_with_limits(apikeys=None):
+    """
+    Initialize DB and pre-populate usage rows for all models and all API keys with their max values (0 for unlimited).
+    Only runs if DB is missing or empty.
+    """
+    import os
+    from datetime import datetime
+    init_db()
+    if apikeys is None:
+        # Try to load from apikeys.json
+        try:
+            with open(os.path.join(os.path.dirname(__file__), 'apikeys.json'), 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                apikeys = [k['key'] for k in data.get('groq_keys', [])]
+        except Exception:
+            apikeys = []
+    if not apikeys:
+        return
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    minute = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+    for apikey in apikeys:
+        for model, quotas in MODEL_QUOTAS.items():
+            # Only insert if not exists
+            c.execute('SELECT 1 FROM apikey_usage WHERE apikey=? AND model=? AND date=?', (apikey, model, today))
+            if not c.fetchone():
+                c.execute('''INSERT INTO apikey_usage (apikey, model, date, requests_today, requests_minute, tokens_today, tokens_minute, last_minute) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (apikey, model, today, 0, 0, 0, 0, minute))
+    conn.commit()
+    conn.close()
 
 # Optionally: add a function to reset usage (for admin/maintenance)
 def reset_usage():
