@@ -138,11 +138,13 @@ def optimal_apikey(model: str, apikeys: List[str]) -> Optional[str]:
     best_score = -1
     for key in apikeys:
         usage = get_usage(key, model)
-        # Calculate remaining quota
-        rem_req_day = quotas["max_requests_per_day"] - usage["requests_today"]
-        rem_req_min = quotas["max_requests_per_minute"] - usage["requests_minute"]
-        rem_tok_day = quotas["max_tokens_per_day"] - usage["tokens_today"]
-        rem_tok_min = quotas["max_tokens_per_minute"] - usage["tokens_minute"]
+        # Calculate remaining quota, treat 0 as unlimited
+        def rem(maxval, used):
+            return float('inf') if maxval == 0 else maxval - used
+        rem_req_day = rem(quotas["max_requests_per_day"], usage["requests_today"])
+        rem_req_min = rem(quotas["max_requests_per_minute"], usage["requests_minute"])
+        rem_tok_day = rem(quotas["max_tokens_per_day"], usage["tokens_today"])
+        rem_tok_min = rem(quotas["max_tokens_per_minute"], usage["tokens_minute"])
         # Score: prioritize not hitting any limit
         score = min(rem_req_day, rem_req_min, rem_tok_day, rem_tok_min)
         if score > best_score:

@@ -163,10 +163,9 @@ import os
 import re
 file = 'apikeymanager.py'
 def parse_limit(val):
-    if val is None:
-        return 'None'
-    val = str(val)
-    return 'None' if val.strip() == '-' else val.strip()
+    if val is None or val.strip() == '' or val.strip() == '-':
+        return '0'
+    return val.strip()
 MODEL = os.environ.get('MODEL')
 MAX_REQ_DAY = os.environ.get('MAX_REQ_DAY')
 MAX_REQ_MIN = os.environ.get('MAX_REQ_MIN')
