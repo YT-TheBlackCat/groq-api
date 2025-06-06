@@ -1,4 +1,4 @@
-te#!/bin/bash
+#!/bin/bash
 set -e
 
 # Color codes
@@ -13,44 +13,52 @@ EXCLUDE="apikeys.json version.txt"
 UPDATED=0
 CHANGED_FILES=()
 
-# --- Install/Update Section ---
-echo -e "${BLUE}[groq-api] Starting install/update...${NC}"
-
-# Check for global apikeys.json in /home/$USER/apikeys.json
-GLOBAL_APIKEYS="/home/pi/apikeys.json"
-CUSTOM_API_KEY=""
-if [ -f "$GLOBAL_APIKEYS" ]; then
-    echo -e "${GREEN}[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it.${NC}"
-    cp "$GLOBAL_APIKEYS" apikeys.json
+# Detect install or update mode
+if [ ! -f "venv/bin/activate" ] || [ ! -f "apikeys.json" ]; then
+    MODE="install"
 else
-    # Ask for multiple API keys
-    APIKEYS=()
-    echo -e "${YELLOW}Enter your Groq API keys (one per line). Leave empty and press Enter to finish:${NC}"
-    while true; do
-        read -p "API Key: " key
-        if [[ -z "$key" ]]; then
-            break
+    MODE="update"
+fi
+
+echo -e "${BLUE}[groq-api] Detected mode: $MODE${NC}"
+
+if [ "$MODE" = "install" ]; then
+    # --- Install Section ---
+    # Check for global apikeys.json in /home/$USER/apikeys.json
+    GLOBAL_APIKEYS="/home/pi/apikeys.json"
+    CUSTOM_API_KEY=""
+    if [ -f "$GLOBAL_APIKEYS" ]; then
+        echo -e "${GREEN}[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it.${NC}"
+        cp "$GLOBAL_APIKEYS" apikeys.json
+    else
+        # Ask for multiple API keys
+        APIKEYS=()
+        echo -e "${YELLOW}Enter your Groq API keys (one per line). Leave empty and press Enter to finish:${NC}"
+        while true; do
+            read -p "API Key: " key
+            if [[ -z "$key" ]]; then
+                break
+            fi
+            APIKEYS+=("$key")
+        done
+
+        if [[ ${#APIKEYS[@]} -eq 0 ]]; then
+            echo -e "${RED}No API keys entered. Exiting.${NC}"
+            exit 1
         fi
-        APIKEYS+=("$key")
-    done
 
-    if [[ ${#APIKEYS[@]} -eq 0 ]]; then
-        echo -e "${RED}No API keys entered. Exiting.${NC}"
-        exit 1
-    fi
+        # Ask for custom local API key for test.sh
+        while true; do
+            read -p "Enter a custom local API key for test.sh (used as Authorization header, cannot be empty): " CUSTOM_API_KEY
+            if [[ -n "$CUSTOM_API_KEY" ]]; then
+                break
+            else
+                echo -e "${RED}Custom local API key cannot be empty. Please enter a value.${NC}"
+            fi
+        done
 
-    # Ask for custom local API key for test.sh
-    while true; do
-        read -p "Enter a custom local API key for test.sh (used as Authorization header, cannot be empty): " CUSTOM_API_KEY
-        if [[ -n "$CUSTOM_API_KEY" ]]; then
-            break
-        else
-            echo -e "${RED}Custom local API key cannot be empty. Please enter a value.${NC}"
-        fi
-    done
-
-    # Create apikeys.json with custom local API key
-    cat > apikeys.json <<EOF
+        # Create apikeys.json with custom local API key
+        cat > apikeys.json <<EOF
 {
   "custom_local_api_key": "$CUSTOM_API_KEY",
   "groq_keys": [
@@ -60,87 +68,26 @@ done)
   ]
 }
 EOF
-    echo -e "${GREEN}[groq-api] apikeys.json created with custom local API key.${NC}"
-fi
-
-# Create venv if not exists
-if [ ! -d "venv" ]; then
-    echo -e "${BLUE}[groq-api] Creating virtual environment...${NC}"
-    python3 -m venv venv
-fi
-
-# Activate venv
-source venv/bin/activate
-
-# Upgrade pip and install dependencies (suppress output, show spinner)
-echo -en "${BLUE}[groq-api] Installing dependencies...${NC} "
-pip install --upgrade pip > /dev/null 2>&1
-pip install -r requirements.txt > /dev/null 2>&1 && echo -e "${GREEN}done${NC}"
-
-# --- Update from remote repo ---
-REMOTE_URL=$(git config --get remote.origin.url)
-BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-
-if git ls-remote --exit-code origin HEAD &>/dev/null; then
-    git fetch origin $BRANCH
-else
-    echo -e "${RED}[groq-api] No remote git repository found. Cannot update.${NC}"
-    exit 1
-fi
-
-REMOTE_FILES=$(git ls-tree -r --name-only origin/$BRANCH)
-for file in $REMOTE_FILES; do
-    skip=0
-    for ex in $EXCLUDE; do
-        if [[ "$file" == "$ex" ]]; then
-            skip=1
-            break
-        fi
-    done
-    if [[ $skip -eq 1 ]]; then
-        continue
+        echo -e "${GREEN}[groq-api] apikeys.json created with custom local API key.${NC}"
     fi
-    TMPFILE=$(mktemp)
-    git show origin/$BRANCH:$file > "$TMPFILE" 2>/dev/null || continue
-    if [[ ! -f "$file" ]]; then
-        echo -e "${YELLOW}[groq-api] Adding new file $file...${NC}"
-        cp "$TMPFILE" "$file"
-        UPDATED=1
-        CHANGED_FILES+=("$file (new)")
-    elif ! cmp -s "$file" "$TMPFILE"; then
-        echo -e "${YELLOW}[groq-api] Updating $file...${NC}"
-        git checkout origin/$BRANCH -- "$file"
-        UPDATED=1
-        CHANGED_FILES+=("$file")
+
+    # Create venv if not exists
+    if [ ! -d "venv" ]; then
+        echo -e "${BLUE}[groq-api] Creating virtual environment...${NC}"
+        python3 -m venv venv
     fi
-    rm -f "$TMPFILE"
-done
 
-VERSION=$(git rev-parse origin/$BRANCH)
-echo "$VERSION" > version.txt
+    # Activate venv
+    source venv/bin/activate
 
-if [[ $UPDATED -eq 1 ]]; then
-    echo -e "${GREEN}[groq-api] Update complete. The following files were updated:${NC}"
-    for f in "${CHANGED_FILES[@]}"; do
-        echo -e "  ${GREEN}$f${NC}"
-    done
-else
-    echo -e "${YELLOW}[groq-api] All files are already up to date. No changes made.${NC}"
-fi
+    # Upgrade pip and install dependencies
+    echo -en "${BLUE}[groq-api] Installing dependencies...${NC} "
+    pip install --upgrade pip > /dev/null 2>&1
+    pip install -r requirements.txt > /dev/null 2>&1 && echo -e "${GREEN}done${NC}"
 
-# --- Debug test run ---
-echo -e "${BLUE}[groq-api] Running debug test (starting server in background)...${NC}"
-nohup venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --reload > debug.log 2>&1 &
-SERVER_PID=$!
-sleep 5
-python3 test_proxy.py || echo -e "${RED}[groq-api] Test failed. Check debug.log for details.${NC}"
-kill $SERVER_PID || true
-
-echo -e "${GREEN}[groq-api] Installation/update complete.${NC}"
-
-# --- Install as systemd service (always) ---
-echo -e "${BLUE}[groq-api] Installing as systemd service...${NC}"
-cat <<EOF | sudo tee /etc/systemd/system/groq-api.service > /dev/null
+    # --- Install as systemd service (always) ---
+    echo -e "${BLUE}[groq-api] Installing as systemd service...${NC}"
+    cat <<EOF | sudo tee /etc/systemd/system/groq-api.service > /dev/null
 [Unit]
 Description=Groq API FastAPI Proxy
 After=network.target
@@ -156,9 +103,66 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable groq-api
-sudo systemctl restart groq-api
+    sudo systemctl daemon-reload
+    sudo systemctl enable groq-api
+    sudo systemctl restart groq-api
 
-echo -e "${GREEN}[groq-api] Service installed and started. Check status with: sudo systemctl status groq-api${NC}"
+    echo -e "${GREEN}[groq-api] Service installed and started. Check status with: sudo systemctl status groq-api${NC}"
+    echo -e "${GREEN}[groq-api] Installation complete.${NC}"
+else
+    # --- Update Section ---
+    REMOTE_URL=$(git config --get remote.origin.url)
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
+    if git ls-remote --exit-code origin HEAD &>/dev/null; then
+        git fetch origin $BRANCH
+    else
+        echo -e "${RED}[groq-api] No remote git repository found. Cannot update.${NC}"
+        exit 1
+    fi
+
+    REMOTE_FILES=$(git ls-tree -r --name-only origin/$BRANCH)
+    for file in $REMOTE_FILES; do
+        skip=0
+        for ex in $EXCLUDE; do
+            if [[ "$file" == "$ex" ]]; then
+                skip=1
+                break
+            fi
+        done
+        if [[ $skip -eq 1 ]]; then
+            continue
+        fi
+        TMPFILE=$(mktemp)
+        git show origin/$BRANCH:$file > "$TMPFILE" 2>/dev/null || continue
+        if [[ ! -f "$file" ]]; then
+            echo -e "${YELLOW}[groq-api] Adding new file $file...${NC}"
+            cp "$TMPFILE" "$file"
+            UPDATED=1
+            CHANGED_FILES+=("$file (new)")
+        elif ! cmp -s "$file" "$TMPFILE"; then
+            echo -e "${YELLOW}[groq-api] Updating $file...${NC}"
+            git checkout origin/$BRANCH -- "$file"
+            UPDATED=1
+            CHANGED_FILES+=("$file")
+        fi
+        rm -f "$TMPFILE"
+    done
+
+    VERSION=$(git rev-parse origin/$BRANCH)
+    echo "$VERSION" > version.txt
+
+    if [[ $UPDATED -eq 1 ]]; then
+        echo -e "${GREEN}[groq-api] Update complete. The following files were updated:${NC}"
+        for f in "${CHANGED_FILES[@]}"; do
+            echo -e "  ${GREEN}$f${NC}"
+        done
+    else
+        echo -e "${YELLOW}[groq-api] All files are already up to date. No changes made.${NC}"
+    fi
+
+    # Restart service after update
+    sudo systemctl restart groq-api
+    echo -e "${GREEN}[groq-api] Service restarted. Check status with: sudo systemctl status groq-api${NC}"
+    echo -e "${GREEN}[groq-api] Update complete.${NC}"
+fi
