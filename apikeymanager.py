@@ -291,3 +291,22 @@ def reset_usage():
         c = conn.cursor()
         c.execute('DELETE FROM apikey_usage')
         conn.commit()
+
+
+def reset_usage_for_key_model(apikey: str, model: str, value: int = 0):
+    """
+    Reset usage counters for a specific API key and model to the specified value (default 0) for today.
+    """
+    now = datetime.utcnow()
+    date_str = now.strftime("%Y-%m-%d")
+    minute_str = now.strftime("%Y-%m-%d %H:%M")
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        c = conn.cursor()
+        c.execute('''SELECT 1 FROM apikey_usage WHERE apikey=? AND model=? AND date=?''', (apikey, model, date_str))
+        if c.fetchone():
+            c.execute('''UPDATE apikey_usage SET requests_today=?, requests_minute=?, tokens_today=?, tokens_minute=?, last_minute=? WHERE apikey=? AND model=? AND date=?''',
+                      (value, value, value, value, minute_str, apikey, model, date_str))
+        else:
+            c.execute('''INSERT INTO apikey_usage (apikey, model, date, requests_today, requests_minute, tokens_today, tokens_minute, last_minute) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (apikey, model, date_str, value, value, value, value, minute_str))
+        conn.commit()

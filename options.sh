@@ -33,6 +33,7 @@ function usage() {
     echo "  add-model      Add a new model to the DB"
     echo "  uninstall      Uninstall groq-api and clean up"
     echo "  status         Show service and DB status"
+    echo "  reset-usage    Reset usage counters for a key/model to a value"
     echo "  --help         Show this help message"
     echo "  --version      Show version"
 }
@@ -289,6 +290,16 @@ uninstall_groq() {
     echo -e "${GREEN}[groq-api] Uninstallation complete.${NC}"
 }
 
+reset_usage_for_key_model() {
+    echo -e "${YELLOW}[groq-api] Reset usage for a specific API key and model${NC}"
+    read -p "Enter the API key (full key): " APIKEY
+    read -p "Enter the model name: " MODEL
+    read -p "Enter the value to reset all counters to (default 0): " VALUE
+    if [ -z "$VALUE" ]; then VALUE=0; fi
+    python3 -c "import apikeymanager; apikeymanager.reset_usage_for_key_model('$APIKEY', '$MODEL', int('$VALUE'))"
+    echo -e "${GREEN}[groq-api] Usage counters reset for key $APIKEY and model $MODEL to $VALUE.${NC}"
+}
+
 # --- Argument parsing ---
 if [[ "$1" == "--help" ]]; then usage; exit 0; fi
 if [[ "$1" == "--version" ]]; then echo "$VERSION"; exit 0; fi
@@ -299,6 +310,7 @@ if [[ "$1" == "usage" ]]; then show_usage; exit 0; fi
 if [[ "$1" == "backup" ]]; then backup_files; exit 0; fi
 if [[ "$1" == "add-model" ]]; then add_model; exit 0; fi
 if [[ "$1" == "uninstall" ]]; then uninstall_groq; exit 0; fi
+if [[ "$1" == "reset-usage" ]]; then reset_usage_for_key_model; exit 0; fi
 
 # Default: show menu
 show_menu
@@ -315,4 +327,3 @@ while true; do
         *) echo -e "${RED}Invalid option. Please try again.${NC}" ;;
     esac
 done
-
