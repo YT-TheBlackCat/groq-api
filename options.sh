@@ -34,6 +34,7 @@ function usage() {
     echo "  uninstall      Uninstall groq-api and clean up"
     echo "  status         Show service and DB status"
     echo "  reset-usage    Reset usage counters for a key/model to a value"
+    echo "  tools          List all available tools/commands"
     echo "  --help         Show this help message"
     echo "  --version      Show version"
 }
@@ -310,6 +311,7 @@ list_tools() {
     echo "  uninstall      Uninstall groq-api and clean up"
     echo "  status         Show service and DB status"
     echo "  reset-usage    Reset usage counters for a key/model to a value"
+    echo "  tools          List all available tools/commands"
     echo "  --help         Show this help message"
     echo "  --version      Show version"
 }
