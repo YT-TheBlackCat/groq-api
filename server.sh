@@ -37,11 +37,13 @@ if [ "$MODE" = "install" ]; then
 
     # Check for global apikeys.json in /home/$USER/apikeys.json
     GLOBAL_APIKEYS="/home/pi/apikeys.json"
-    CUSTOM_API_KEY=""
-    if [ -f "$GLOBAL_APIKEYS" ]; then
+    if [ ! -f "apikeys.json" ] && [ -f "$GLOBAL_APIKEYS" ]; then
         echo -e "${GREEN}[groq-api] Found global apikeys.json at $GLOBAL_APIKEYS. Using it.${NC}"
         cp "$GLOBAL_APIKEYS" apikeys.json
-    else
+    fi
+
+    # Only prompt for API keys if apikeys.json still does not exist
+    if [ ! -f "apikeys.json" ]; then
         # Ask for multiple API keys
         APIKEYS=()
         echo -e "${YELLOW}Enter your Groq API keys (one per line). Leave empty and press Enter to finish:${NC}"
