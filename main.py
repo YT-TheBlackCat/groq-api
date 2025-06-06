@@ -142,3 +142,4 @@ async def proxy_chat_completions(request: Request):
     except Exception as e:
         logger.error(f"Groq error: {e}")
         raise HTTPException(status_code=502, detail=f"Groq error: {e}")
+
