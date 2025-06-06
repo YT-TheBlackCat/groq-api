@@ -18,7 +18,7 @@ function ensure_python_requirements() {
     echo -e "${BLUE}[groq-api] Ensuring Python requirements...${NC}"
     source venv/bin/activate
     pip install --upgrade pip > /dev/null 2>&1
-    pip install fastapi httpx uvicorn groq requests > /dev/null 2>&1
+    pip install fastapi httpx uvicorn groq requests tiktoken > /dev/null 2>&1
 }
 
 # Detect install or update mode

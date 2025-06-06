@@ -12,6 +12,14 @@ from fastapi.responses import JSONResponse
 from groq import Groq
 from apikeymanager import optimal_apikey, update_usage, __version__
 
+# Tokenizer import for accurate token counting
+try:
+    import tiktoken
+    _tiktoken_available = True
+except ImportError:
+    _tiktoken_available = False
+    logging.warning("tiktoken not installed, falling back to character count for token estimation.")
+
 APIKEYS_FILE = "apikeys.json"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -42,9 +50,6 @@ def version():
 @app.post("/chat/completions")
 async def proxy_chat_completions(request: Request):
     auth = request.headers.get("Authorization", "")
-    # Debug: log expected and received Authorization header (do not log full key in production)
-    logger.info(f"Expected Authorization: Bearer {API_KEY} (length {len(API_KEY)})")
-    logger.info(f"Received Authorization: {auth} (length {len(auth)})")
     if auth != f"Bearer {API_KEY}":
         logger.warning("401 Unauthorized: Authorization header mismatch.")
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -87,9 +92,14 @@ async def proxy_chat_completions(request: Request):
             messages=messages,
             model=model,
         )
-        # Estimate token usage (rough)
-        prompt_tokens = sum(len(m.get("content", "")) for m in messages)
-        completion_tokens = len(chat_completion.choices[0].message.content)
+        # Accurate token usage estimation using tiktoken if available
+        if _tiktoken_available:
+            enc = tiktoken.encoding_for_model(model) if hasattr(tiktoken, 'encoding_for_model') else tiktoken.get_encoding("cl100k_base")
+            prompt_tokens = sum(len(enc.encode(m.get("content", ""))) for m in messages)
+            completion_tokens = len(enc.encode(chat_completion.choices[0].message.content))
+        else:
+            prompt_tokens = sum(len(m.get("content", "")) for m in messages)
+            completion_tokens = len(chat_completion.choices[0].message.content)
         total_tokens = prompt_tokens + completion_tokens
         update_usage(best_key, model, total_tokens)
         return JSONResponse(status_code=200, content={
