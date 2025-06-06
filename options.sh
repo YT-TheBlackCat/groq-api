@@ -156,13 +156,16 @@ add_model() {
     read -p "Max requests per minute (enter - for no limit): " MAX_REQ_MIN
     read -p "Max tokens per minute (enter - for no limit): " MAX_TOK_MIN
     read -p "Max tokens per day (enter - for no limit): " MAX_TOK_DAY
-    # Convert '-' to None in Python and use shell variable expansion in the heredoc
+    export MODEL MAX_REQ_DAY MAX_REQ_MIN MAX_TOK_MIN MAX_TOK_DAY
     python3 - <<EOF
 import sys
 import os
 import re
 file = 'apikeymanager.py'
 def parse_limit(val):
+    if val is None:
+        return 'None'
+    val = str(val)
     return 'None' if val.strip() == '-' else val.strip()
 MODEL = os.environ.get('MODEL')
 MAX_REQ_DAY = os.environ.get('MAX_REQ_DAY')
