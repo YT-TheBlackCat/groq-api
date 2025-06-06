@@ -37,7 +37,7 @@ MODEL_QUOTAS = {
         "max_requests_per_minute": 100,
         "max_tokens_per_minute": 120000,
         "max_tokens_per_day": 10000000
-    }
+    },
 }
 
 def init_db():
