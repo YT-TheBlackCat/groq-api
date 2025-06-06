@@ -80,7 +80,7 @@ async def proxy_chat_completions(request: Request):
         if any(phrase in content for phrase in forbidden_phrases):
             logger.warning("Jailbreak bypass attempt detected in user message. Blocking request.")
             return JSONResponse(status_code=403, content={
-                "detail": "jailbreak detected"
+                "detail": "Your request does not match the terms of service of TheBlackCat/BlackBot."
             })
     if len(messages) > 0 and messages[0].get("role") == "system" and messages[0].get("content", "").strip().lower() == "systemprompt.txt":
         try:
@@ -142,4 +142,3 @@ async def proxy_chat_completions(request: Request):
     except Exception as e:
         logger.error(f"Groq error: {e}")
         raise HTTPException(status_code=502, detail=f"Groq error: {e}")
-
