@@ -4,6 +4,7 @@ import httpx
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from groq import Groq
+from apikeymanager import optimal_apikey, update_usage
 
 APIKEYS_FILE = "apikeys.json"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -20,31 +21,6 @@ def get_local_api_key():
         raise RuntimeError(f"{APIKEYS_FILE} not found. Please run install.sh to create it.")
     with open(APIKEYS_FILE, "r") as f:
         return json.load(f).get("custom_local_api_key", "")
-
-# Get rate limit info for a key
-def get_groq_ratelimit_headers(api_key):
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    # Use a lightweight request to get headers (OPTIONS is not supported, so use POST with minimal data)
-    data = {"model": "llama-3-8b", "messages": [{"role": "user", "content": "ping"}]}
-    try:
-        with httpx.Client(timeout=10) as client:
-            resp = client.post(GROQ_API_URL, headers=headers, json=data)
-            # Even if the request fails, headers are returned
-            return {
-                "remaining_tokens": int(resp.headers.get("x-ratelimit-remaining-tokens", 0)),
-                "remaining_requests": int(resp.headers.get("x-ratelimit-remaining-requests", 0)),
-                "status_code": resp.status_code
-            }
-    except Exception:
-        return {"remaining_tokens": 0, "remaining_requests": 0, "status_code": 0}
-
-# Select the key with the highest remaining tokens
-def select_best_key(apikeys):
-    best = max(apikeys, key=lambda k: k.get("remaining_tokens", 0))
-    return best
 
 app = FastAPI()
 API_KEY = get_local_api_key()
@@ -72,26 +48,25 @@ async def proxy_chat_completions(request: Request):
     else:
         raise HTTPException(status_code=400, detail="Invalid model specified")
 
-    # Load API keys and update their rate limit info
-    apikeys = load_apikeys()["groq_keys"]
-    for k in apikeys:
-        info = get_groq_ratelimit_headers(k["key"])
-        k["remaining_tokens"] = info["remaining_tokens"]
-        k["remaining_requests"] = info["remaining_requests"]
-        k["last_status_code"] = info["status_code"]
-    best_key = select_best_key(apikeys)
-    groq_key = best_key["key"]
+    apikeys = [k["key"] for k in load_apikeys()["groq_keys"]]
+    best_key = optimal_apikey(model, apikeys)
+    if not best_key:
+        raise HTTPException(status_code=429, detail="All API keys exhausted for this model.")
 
-    # Print remaining tokens for the selected key
-    print(f"[groq-api] Using key: {groq_key[:8]}... Remaining tokens: {best_key['remaining_tokens']}, Remaining requests: {best_key['remaining_requests']}")
+    # Print which key is used
+    print(f"[groq-api] Using key: {best_key[:8]}... for model: {model}")
 
-    client = Groq(api_key=groq_key)
+    client = Groq(api_key=best_key)
     try:
         chat_completion = client.chat.completions.create(
             messages=body.get("messages", []),
             model=model,
         )
-        print(chat_completion.choices[0].message.content)
+        # Estimate token usage (very rough, for demo)
+        prompt_tokens = sum(len(m.get("content", "")) for m in body.get("messages", []))
+        completion_tokens = len(chat_completion.choices[0].message.content)
+        total_tokens = prompt_tokens + completion_tokens
+        update_usage(best_key, model, total_tokens)
         return JSONResponse(status_code=200, content={
             "choices": [
                 {
