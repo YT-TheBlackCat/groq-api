@@ -104,6 +104,10 @@ EOF
         python3 -c "import apikeymanager; apikeymanager.init_db()"
     fi
 
+    # Ensure apikey_usage is pre-populated with all models/keys/limits
+    echo -e "${BLUE}[groq-api] Pre-populating apikeys.db with all models and API keys...${NC}"
+    python3 -c "import apikeymanager; apikeymanager.init_db_with_limits()"
+
     # --- Install as systemd service (always) ---
     echo -e "${BLUE}[groq-api] Installing as systemd service...${NC}"
     cat <<EOF | sudo tee /etc/systemd/system/groq-api.service > /dev/null
