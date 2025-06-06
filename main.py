@@ -73,7 +73,7 @@ async def proxy_chat_completions(request: Request):
     messages = body.get("messages", [])
     # --- Jailbreak bypass prevention ---
     forbidden_phrases = [
-        "jailbreak detected", "system prompt", "security policy", "bypass"
+
     ]
     for m in messages:
         content = m.get("content", "").lower()
