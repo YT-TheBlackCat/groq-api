@@ -152,24 +152,27 @@ backup_files() {
 add_model() {
     echo -e "${YELLOW}[groq-api] Add a new model to the DB (apikeymanager.py)${NC}"
     read -p "Model name: " MODEL
-    read -p "Max requests per day: " MAX_REQ_DAY
-    read -p "Max requests per minute: " MAX_REQ_MIN
-    read -p "Max tokens per minute: " MAX_TOK_MIN
-    read -p "Max tokens per day: " MAX_TOK_DAY
+    read -p "Max requests per day (enter - for no limit): " MAX_REQ_DAY
+    read -p "Max requests per minute (enter - for no limit): " MAX_REQ_MIN
+    read -p "Max tokens per minute (enter - for no limit): " MAX_TOK_MIN
+    read -p "Max tokens per day (enter - for no limit): " MAX_TOK_DAY
+    # Convert '-' to None in Python
     python3 - <<EOF
 import sys
 import os
 import re
 file = 'apikeymanager.py'
+def parse_limit(val):
+    return 'None' if val.strip() == '-' else val.strip()
 with open(file, 'r', encoding='utf-8') as f:
     code = f.read()
-pattern = r'MODEL_QUOTAS\s*=\s*{'
+pattern = r'MODEL_QUOTAS\\s*=\\s*{'
 match = re.search(pattern, code)
 if not match:
     print('MODEL_QUOTAS not found!')
     sys.exit(1)
 insert_idx = code.find('}', code.find('MODEL_QUOTAS'))
-model_entry = f'    "{MODEL}": {{\n        "max_requests_per_day": {MAX_REQ_DAY},\n        "max_requests_per_minute": {MAX_REQ_MIN},\n        "max_tokens_per_minute": {MAX_TOK_MIN},\n        "max_tokens_per_day": {MAX_TOK_DAY}\n    }},\n'
+model_entry = f'    "{MODEL}": {{\n        "max_requests_per_day": {parse_limit("""$MAX_REQ_DAY""")},\n        "max_requests_per_minute": {parse_limit("""$MAX_REQ_MIN""")},\n        "max_tokens_per_minute": {parse_limit("""$MAX_TOK_MIN""")},\n        "max_tokens_per_day": {parse_limit("""$MAX_TOK_DAY""")}\n    }},\n'
 code = code[:insert_idx] + model_entry + code[insert_idx:]
 with open(file, 'w', encoding='utf-8') as f:
     f.write(code)
@@ -178,6 +181,11 @@ EOF
 }
 
 uninstall_groq() {
+    read -p "Are you sure you want to uninstall and delete everything? Type YES to confirm: " CONFIRM
+    if [ "$CONFIRM" != "YES" ]; then
+        echo -e "${RED}Uninstall cancelled.${NC}"
+        return
+    fi
     echo -e "${YELLOW}[groq-api] Uninstalling and cleaning up...${NC}"
     SERVICE_NAME=groq-api
     WORKDIR=$(pwd)
