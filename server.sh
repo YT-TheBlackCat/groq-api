@@ -98,6 +98,12 @@ EOF
     pip install --upgrade pip > /dev/null 2>&1
     pip install -r requirements.txt > /dev/null 2>&1 && echo -e "${GREEN}done${NC}"
 
+    # Ensure apikeys.db exists by initializing it if missing
+    if [ ! -f "apikeys.db" ]; then
+        echo -e "${BLUE}[groq-api] Initializing apikeys.db...${NC}"
+        python3 -c "import apikeymanager; apikeymanager.init_db()"
+    fi
+
     # --- Install as systemd service (always) ---
     echo -e "${BLUE}[groq-api] Installing as systemd service...${NC}"
     cat <<EOF | sudo tee /etc/systemd/system/groq-api.service > /dev/null
