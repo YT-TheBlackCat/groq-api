@@ -56,6 +56,7 @@ async def proxy_chat_completions(request: Request):
     body = await request.json()
     # Model aliasing
     model = body.get("model")
+    userprompt = body.get("messages", [{}])[0].get("content", "").strip() if body.get("messages") else ""
     aliases = {
         "test": "allam-2-7b",
         "auto": "llama-3.1-8b-instant",
@@ -68,6 +69,19 @@ async def proxy_chat_completions(request: Request):
     model = aliases.get(model, model)
     if model not in aliases.values() and model not in aliases.keys():
         raise HTTPException(status_code=400, detail="Invalid model specified")
+
+    if model == "allam-2-7b" and userprompt == "test":
+        logger.info("Test mode activated: returning test message instead of calling Groq API.")
+        return JSONResponse(status_code=200, content={
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "This is a test message from custom-groq-api (test mode)."
+                    }
+                }
+            ]
+        })
 
     # System prompt file support
     messages = body.get("messages", [])
